@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uet.agent_simulation_worker.pubsub.message.master.MasterMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RedisMessagePublisher implements MessagePublisher {
     private final ChannelTopic topic;
     private final RedisTemplate<String, Object> redisTemplate;
@@ -23,9 +25,10 @@ public class RedisMessagePublisher implements MessagePublisher {
         var messageJson = "";
         try {
             messageJson = objectMapper.writeValueAsString(message);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            log.error("Error while converting message to JSON", e);
         }
+
         redisTemplate.convertAndSend(topic.getTopic(), messageJson);
     }
 }

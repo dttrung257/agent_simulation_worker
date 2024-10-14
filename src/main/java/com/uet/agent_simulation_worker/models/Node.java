@@ -7,16 +7,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "nodes")
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Node extends Auditable {
@@ -28,4 +28,10 @@ public class Node extends Auditable {
 
     @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer role;
+
+    @Column(nullable = false)
+    private String host;
+
+    @Column(nullable = false)
+    private Integer port;
 }

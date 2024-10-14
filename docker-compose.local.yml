@@ -1,0 +1,19 @@
+services:
+  api:
+    container_name: agent_simulation_dev_worker
+    restart: always
+    build:
+      context: .
+      dockerfile: ./docker/development/api/Dockerfile
+    volumes:
+      - ./:/app
+      - ./projects:/app/projects
+      - ./gama/gama-platform:/opt/gama-platform
+    ports:
+      - "8080:8080"
+    networks:
+      - agent_simulation_net
+
+networks:
+  agent_simulation_net:
+    driver: bridge

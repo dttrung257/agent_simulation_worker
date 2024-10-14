@@ -9,5 +9,4 @@ public record ErrorResponse(
     String errorCode,
     String message,
     Object details
-) {
-}
+) { }
