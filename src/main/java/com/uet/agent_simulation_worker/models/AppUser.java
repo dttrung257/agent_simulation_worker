@@ -14,6 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,7 +28,7 @@ import java.util.List;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 @Getter
 @Setter
 public class AppUser extends Auditable implements UserDetails {
@@ -46,7 +47,7 @@ public class AppUser extends Auditable implements UserDetails {
     @JsonIgnore
     private String password;
 
-    @Column(nullable = false, columnDefinition = "SMALLINT")
+    @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer role;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)

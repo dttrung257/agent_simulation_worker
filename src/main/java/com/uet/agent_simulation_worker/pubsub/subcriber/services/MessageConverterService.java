@@ -1,6 +1,5 @@
 package com.uet.agent_simulation_worker.pubsub.subcriber.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uet.agent_simulation_worker.pubsub.PubSubCommands;
 import com.uet.agent_simulation_worker.pubsub.message.master.simulation.RunSimulation;
@@ -29,7 +28,7 @@ public class MessageConverterService implements MessageConverter {
             nodeId = rootNode.get("nodeId").asInt();
 
             return nodeId;
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             log.error("Error while parsing pubsub message", e);
 
             return null;
@@ -53,7 +52,7 @@ public class MessageConverterService implements MessageConverter {
             }
 
             return command;
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             log.error("Error while parsing pubsub message", e);
 
             return null;
@@ -97,7 +96,7 @@ public class MessageConverterService implements MessageConverter {
             data = objectMapper.readValue(message.toString(), RunSimulation.class);
 
             return data;
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             log.error("Error while parsing pubsub message", e);
 
             return null;

@@ -11,10 +11,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigInteger;
 
@@ -22,7 +22,7 @@ import java.math.BigInteger;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 @Getter
 @Setter
 public class ExperimentResult extends Auditable {
@@ -32,13 +32,27 @@ public class ExperimentResult extends Auditable {
     private BigInteger id;
 
     @Column(nullable = false)
-    private String image_url;
+    private Integer finalStep;
+
+    @Column(columnDefinition = "VARCHAR(300)")
+    private String location;
+
+    @Column(nullable = false, columnDefinition = "TINYINT")
+    private Integer status;
 
     @Column(name = "experiment_id", nullable = false, insertable = false, updatable = false, columnDefinition = "BIGINT")
     private BigInteger experimentId;
+
+    @Column(name = "node_id", nullable = false, insertable = false, updatable = false)
+    private Integer nodeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "experiment_id", referencedColumnName = "id")
     @JsonIgnore
     private Experiment experiment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "node_id", referencedColumnName = "id")
+    @JsonIgnore
+    private Node node;
 }

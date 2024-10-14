@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigInteger;
 import java.util.List;
 
 /**
@@ -18,6 +19,12 @@ import java.util.List;
 @AllArgsConstructor
 public class CreateSimulationRequest {
     private Integer nodeId;
+
+    private BigInteger projectId;
+
+    private String projectLocation;
+
+    private Integer order;
 
     @Valid
     @NotNull

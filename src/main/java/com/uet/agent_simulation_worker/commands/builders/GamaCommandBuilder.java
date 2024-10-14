@@ -42,6 +42,8 @@ public class GamaCommandBuilder implements IGamaCommandBuilder {
 
     @Override
     public String buildLegacy(Map<String, String> options, String pathToXmlFile, String pathToOutputDir) {
+        pathToOutputDir = pathToOutputDir.endsWith("/") ? pathToOutputDir : pathToOutputDir + "/";
+
         return this.build(
                 env.getProperty("gama.path.shell"),
                 options,

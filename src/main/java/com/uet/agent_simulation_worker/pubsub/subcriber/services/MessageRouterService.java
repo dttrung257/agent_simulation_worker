@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class MessageRouterService {
+public class MessageRouterService implements MessageRouter {
     private final MessageHandler messageHandler;
 
     /**

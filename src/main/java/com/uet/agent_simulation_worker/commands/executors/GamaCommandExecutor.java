@@ -10,6 +10,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigInteger;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
@@ -56,7 +57,7 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
 
     @Override
     public CompletableFuture<Void> executeLegacy(String createXmlCommand, String runLegacyCommand, String pathToXmlFile,
-        int experimentId, String experimentName, long finalStep) {
+         BigInteger experimentId, String experimentName, long finalStep) {
         return CompletableFuture.runAsync(() -> {
             try {
                 // Prepare experiment plan xml file to run legacy command
@@ -96,11 +97,11 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
      * This method is used to update the experiment plan file.
      *
      * @param pathToXmlFile String
-     * @param experimentId int
+     * @param experimentId BigInteger
      * @param experimentName String
      * @param finalStep long
      */
-    private void updateExperimentPlan(String pathToXmlFile, int experimentId, String experimentName, long finalStep) {
+    private void updateExperimentPlan(String pathToXmlFile, BigInteger experimentId, String experimentName, long finalStep) {
         try {
             // Read the file content into a string
             final var content = new StringBuilder();
