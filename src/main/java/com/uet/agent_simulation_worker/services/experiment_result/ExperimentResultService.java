@@ -7,15 +7,18 @@ import com.uet.agent_simulation_worker.exceptions.node.CannotFetchNodeDataExcept
 import com.uet.agent_simulation_worker.models.Experiment;
 import com.uet.agent_simulation_worker.models.ExperimentResult;
 import com.uet.agent_simulation_worker.repositories.ExperimentResultRepository;
+import com.uet.agent_simulation_worker.responses.experiment_result.DownloadExperimentResultResponse;
 import com.uet.agent_simulation_worker.responses.experiment_result.ExperimentProgressResponse;
 import com.uet.agent_simulation_worker.services.auth.IAuthService;
 import com.uet.agent_simulation_worker.services.node.INodeService;
 import com.uet.agent_simulation_worker.utils.FileUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.io.FileInputStream;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -124,5 +127,28 @@ public class ExperimentResultService implements IExperimentResultService {
 
             throw new CannotFetchNodeDataException(e.getMessage());
         }
+    }
+
+    @Override
+    public DownloadExperimentResultResponse download(BigInteger id) {
+        final var experimentResult = experimentResultRepository.findById(id);
+        if (experimentResult.isEmpty()) {
+            throw new ExperimentResultNotFoundException(ExperimentResultErrors.E_ER_0001.defaultMessage());
+        }
+
+        if (!nodeService.getCurrentNodeId().equals(experimentResult.get().getNodeId())) {
+            throw new ExperimentResultNotFoundException("Experiment result is not in current node");
+        }
+
+        final var path = Paths.get(experimentResult.get().getLocation() + ".zip");
+        final var file = path.toFile();
+        InputStreamResource resource;
+        try {
+            resource = new InputStreamResource(new FileInputStream(file));
+        } catch (Exception e) {
+            throw new ExperimentResultNotFoundException(ExperimentResultErrors.E_ER_0001.defaultMessage());
+        }
+
+        return new DownloadExperimentResultResponse(resource, file.getName(), file.length());
     }
 }

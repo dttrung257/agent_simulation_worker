@@ -1,21 +1,24 @@
 package com.uet.agent_simulation_worker.utils;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class FileUtil {
+    private final ExecutorService virtualThreadExecutor;
+
     /**
      * Check if a file exists
      *
@@ -154,4 +157,55 @@ public class FileUtil {
 
         return null;
     }
+
+    /**
+     * Zip a folder
+     *
+     * @param sourceDirPath the path to the folder
+     */
+    public boolean zipFolder(String sourceDirPath) {
+        long startTime = System.nanoTime();
+        log.info("Starting zipping folder: {}", sourceDirPath);
+        final var sourcePath = Paths.get(sourceDirPath);
+        final var zipFilePath = sourcePath.getParent().resolve(sourcePath.getFileName() + ".zip");
+
+        try (final var zos = new ZipOutputStream(Files.newOutputStream(zipFilePath));
+             final var paths = Files.walk(sourcePath)) {
+
+            paths.filter(path -> !Files.isDirectory(path))
+                    .forEach(path -> {
+                        final var zipEntry = new ZipEntry(sourcePath.relativize(path).toString());
+                        try (var inputStream = new BufferedInputStream(Files.newInputStream(path))) {
+                            zos.putNextEntry(zipEntry);
+                            byte[] buffer = new byte[4096];
+                            int bytesRead;
+                            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                                zos.write(buffer, 0, bytesRead);
+                            }
+                            zos.closeEntry();
+                        } catch (Exception e) {
+                            System.err.println("Error zipping file " + path + ": " + e.getMessage());
+                        }
+                    });
+            long endTime = System.nanoTime();
+            long durationInMillis = (endTime - startTime) / 1_000_000;
+            log.info("Zipping process finished for folder: {}. Total time: {} ms", sourceDirPath, durationInMillis);
+
+            return true;
+        } catch (Exception e) {
+            log.error("Error while zipping folder: {}", e.getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Zip a folder asynchronously.
+     *
+     * @param sourceDirPath the path to the folder
+     */
+    public void zipFolderAsync(String sourceDirPath) {
+        virtualThreadExecutor.submit(() -> zipFolder(sourceDirPath));
+    }
 }
+
