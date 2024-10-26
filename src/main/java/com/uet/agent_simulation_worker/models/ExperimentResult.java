@@ -40,6 +40,9 @@ public class ExperimentResult extends Auditable {
     @Column(nullable = false, columnDefinition = "TINYINT")
     private Integer status;
 
+    @Column(name = "run_command_pid", columnDefinition = "BIGINT")
+    private Long runCommandPid;
+
     @Column(name = "experiment_id", nullable = false, insertable = false, updatable = false, columnDefinition = "BIGINT")
     private BigInteger experimentId;
 

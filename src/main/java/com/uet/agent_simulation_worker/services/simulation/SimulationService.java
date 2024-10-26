@@ -257,16 +257,17 @@ public class SimulationService implements ISimulationService {
                     }
 
                     // Execute commands
-                    final var executeCommandFuture = gamaCommandExecutor.executeLegacy(createXmlCommand,
-                        runLegacyCommand, pathToExperimentPlanXmlFile, experimentId, experimentName, finalStep);
+                    final var executeCommandFuture = gamaCommandExecutor.executeLegacy(createXmlCommand, runLegacyCommand,
+                            pathToExperimentPlanXmlFile, experimentId, experimentName, finalStep, experimentResult);
 
                     executeCommandFuture.whenComplete((executeCommandResult, executeCommandError) -> {
                         if (executeCommandError != null) {
                             log.error("Error while running simulation", executeCommandError);
-
                             clearLocalResource(pathToLocalExperimentOutputDir);
                             clearLocalResource(pathToExperimentPlanXmlFile);
+                            experimentResult.setRunCommandPid(null); // Clear run command pid.
                             experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.FAILED);
+
                             return;
                         }
 
@@ -392,6 +393,7 @@ public class SimulationService implements ISimulationService {
         long end = timeUtil.getCurrentTimeNano();
         log.info("Save experiment result images took: {} ns", end - start);
 
+        experimentResult.setRunCommandPid(null); // Clear run command pid.
         // Update experiment result status.
         experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.FINISHED);
 

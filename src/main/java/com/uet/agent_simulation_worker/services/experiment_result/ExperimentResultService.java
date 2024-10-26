@@ -12,6 +12,7 @@ import com.uet.agent_simulation_worker.responses.experiment_result.ExperimentPro
 import com.uet.agent_simulation_worker.services.auth.IAuthService;
 import com.uet.agent_simulation_worker.services.node.INodeService;
 import com.uet.agent_simulation_worker.utils.FileUtil;
+import com.uet.agent_simulation_worker.utils.ThreadUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
@@ -30,6 +31,7 @@ import java.util.regex.Pattern;
 @Slf4j
 public class ExperimentResultService implements IExperimentResultService {
     private final FileUtil fileUtil;
+    private final ThreadUtil threadUtil;
     private final IAuthService authService;
     private final INodeService nodeService;
     private final ExperimentResultRepository experimentResultRepository;
@@ -150,5 +152,26 @@ public class ExperimentResultService implements IExperimentResultService {
         }
 
         return new DownloadExperimentResultResponse(resource, file.getName(), file.length());
+    }
+
+    @Override
+    public void stop(BigInteger id) {
+        final var experimentResult = experimentResultRepository.findById(id);
+        if (experimentResult.isEmpty()) {
+            throw new ExperimentResultNotFoundException(ExperimentResultErrors.E_ER_0001.defaultMessage());
+        }
+
+        if (!nodeService.getCurrentNodeId().equals(experimentResult.get().getNodeId())) {
+            final var webClient = nodeService.getWebClientByNodeId(experimentResult.get().getNodeId());
+            webClient.delete().uri("/api/v1/experiment_results/" + id + "/stop").retrieve().bodyToMono(String.class).block();
+
+            return;
+        }
+
+        if (experimentResult.get().getRunCommandPid() == null) {
+            return;
+        }
+
+        threadUtil.killProcessById(experimentResult.get().getRunCommandPid());
     }
 }

@@ -18,4 +18,6 @@ public interface IExperimentResultService {
     ExperimentProgressResponse getExperimentProgress(BigInteger id);
 
     DownloadExperimentResultResponse download(BigInteger id);
+
+    void stop(BigInteger id);
 }
