@@ -51,17 +51,17 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests((requests) -> requests
                         // Auth endpoints - public
-                        .requestMatchers(HttpMethod.POST, "api/v1/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "api/v1/auth/register").permitAll()
-                        .requestMatchers(HttpMethod.POST, "api/v1/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
 
                         // Health check
-                        .requestMatchers(HttpMethod.GET, "api/v1/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "api/v1/experiment_result_images/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "api/v1/experiment_results/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_result_images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_results/**").permitAll()
 
-                        .requestMatchers(HttpMethod.DELETE, "api/v1/experiment_results/{id}/stop").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/experiment_results/{id}/stop").permitAll()
 
                         .anyRequest().authenticated()
                 )
