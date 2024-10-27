@@ -200,6 +200,68 @@ public class FileUtil {
     }
 
     /**
+     * Copy folder using OS command
+     * @param sourceFolder Path of the source folder
+     * @param destinationFolder Path of the destination folder
+     * @return true if copy is successful, false otherwise
+     */
+    public boolean makeACopyFolder(String sourceFolder, String destinationFolder) {
+        ProcessBuilder processBuilder;
+        String command;
+
+        if (System.getProperty("os.name").toLowerCase().contains("win")) {
+            // Windows
+            command = String.format("xcopy \"%s\" \"%s\" /E /I", sourceFolder, destinationFolder);
+            processBuilder = new ProcessBuilder("cmd.exe", "/c", command);
+        } else {
+            // Unix/Linux/Mac
+            command = String.format("cp -r \"%s\" \"%s\"", sourceFolder, destinationFolder);
+            processBuilder = new ProcessBuilder("bash", "-c", command);
+        }
+
+        try {
+            Process process = processBuilder.start();
+            int exitCode = process.waitFor();
+
+            if (exitCode == 0) {
+                return true;
+            } else {
+                log.error("Failed to copy folder. Exit code: {}", exitCode);
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("Error while copying folder: {}", e.getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * This method is used to delete a file or a folder.
+     *
+     */
+    public void delete(String path) {
+        // Clear old output directory
+        final var processBuilder = new ProcessBuilder();
+
+        try {
+            final var process = processBuilder.command("bash", "-c", "rm -rf " + path).start();
+        } catch (Exception e) {
+            log.error("Error while clearing old output directory: {}", e.getMessage());
+        }
+    }
+
+    public void rename(String oldPath, String newPath) {
+        final var processBuilder = new ProcessBuilder();
+
+        try {
+            final var process = processBuilder.command("bash", "-c", "mv " + oldPath + " " + newPath).start();
+        } catch (Exception e) {
+            log.error("Error while renaming file: {}", e.getMessage());
+        }
+    }
+
+    /**
      * Zip a folder asynchronously.
      *
      * @param sourceDirPath the path to the folder

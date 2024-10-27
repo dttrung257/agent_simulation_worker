@@ -39,6 +39,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -368,6 +369,7 @@ public class SimulationService implements ISimulationService {
             .build()).toList();
 
         final var experimentResultCategories = experimentResultCategoryRepository.saveAll(experimentResultCategoryList);
+        final var resultCategoryNames = experimentResultCategories.stream().map(ExperimentResultCategory::getName).toList();
 
         imageList.forEach(image -> {
             final var imageName = image.getFirst();
@@ -398,27 +400,73 @@ public class SimulationService implements ISimulationService {
         experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.FINISHED);
 
         // Prepare for download.
-        prepareForDownload(experimentResult, experimentResultLocation);
+        prepareForDownload(experimentResult, experimentResultLocation, resultCategoryNames);
     }
 
     /**
+     /**
      * This method is used to prepare for download.
      *
      * @param experimentResult ExperimentResult
      * @param resultLocation String
      */
-    private void prepareForDownload(ExperimentResult experimentResult, String resultLocation) {
+    private void prepareForDownload(ExperimentResult experimentResult, String resultLocation, List<String> resultCategoryNames) {
         virtualThreadExecutor.submit(() -> {
             if (experimentResult.getStatus() != ExperimentResultStatusConst.FINISHED) {
                 log.error("Experiment result is not finished, cannot prepare for download");
                 return;
             }
+            final var copyResultLocation = resultLocation + "-copy";
+            final var successMakeACopy = fileUtil.makeACopyFolder(resultLocation, copyResultLocation);
+            if (!successMakeACopy) return;
 
-            final var isSuccess = fileUtil.zipFolder(resultLocation);
+            final var successSeparateImages = separateResultImagesIntoCategoryFolder(copyResultLocation, resultCategoryNames);
+            if (!successSeparateImages) return;
+
+            final var isSuccess = fileUtil.zipFolder(copyResultLocation);
             if (!isSuccess) return;
+
+            fileUtil.rename(copyResultLocation + ".zip", resultLocation + ".zip");
+            fileUtil.delete(copyResultLocation);
 
             experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.READY_FOR_DOWNLOAD);
         });
+    }
+
+    private boolean separateResultImagesIntoCategoryFolder(String copyResultLocation, List<String> resultCategoryNames) {
+        final var sourceDir = Paths.get(copyResultLocation, "snapshot");
+
+        if (!Files.exists(sourceDir) || !Files.isDirectory(sourceDir)) {
+            System.err.println("Source directory does not exist or is not a directory: " + sourceDir);
+            return false;
+        }
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(sourceDir)) {
+            for (Path entry : stream) {
+                if (Files.isRegularFile(entry)) {
+                    String fileName = entry.getFileName().toString();
+
+                    for (String category : resultCategoryNames) {
+                        if (fileName.startsWith(category + "-")) {
+                            Path categoryDir = sourceDir.resolve(category);
+                            if (!Files.exists(categoryDir)) {
+                                Files.createDirectory(categoryDir);
+                            }
+
+                            Path targetPath = categoryDir.resolve(fileName);
+                            Files.move(entry, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                            System.out.println("Moved " + fileName + " to " + categoryDir);
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error occurred while processing files: " + e.getMessage());
+            return false;
+        }
+
+        return true;
     }
 
 //    /**
