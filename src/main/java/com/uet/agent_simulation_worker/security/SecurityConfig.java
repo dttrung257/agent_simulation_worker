@@ -59,6 +59,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/v1/experiment_result_images/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_result_images/animation/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/experiment_results/**").permitAll()
 
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/experiment_results/{id}/stop").permitAll()

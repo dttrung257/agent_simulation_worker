@@ -118,6 +118,9 @@ public class FileUtil {
         try {
             final var path = Paths.get(pathToFile);
             List<String> lines = Files.readAllLines(path);
+            if (lines.isEmpty()) {
+                return null;
+            }
 
             for (int i = lines.size() - 1; i >= 0; i--) {
                 String line = lines.get(i);

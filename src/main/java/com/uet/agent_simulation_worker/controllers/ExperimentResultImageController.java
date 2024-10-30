@@ -1,10 +1,12 @@
 package com.uet.agent_simulation_worker.controllers;
 
 import com.uet.agent_simulation_worker.responses.ResponseHandler;
+import com.uet.agent_simulation_worker.responses.experiment_result_image.ExperimentResultImageListResponse;
 import com.uet.agent_simulation_worker.services.experiment_result_image.IExperimentResultImageService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 
 import java.math.BigInteger;
 
@@ -72,5 +75,25 @@ public class ExperimentResultImageController {
     @GetMapping("/{id}/encode")
     public ResponseEntity<String> getImage(@PathVariable BigInteger id) {
         return ResponseEntity.ok(experimentResultImageService.getImageDataEncoded(id));
+    }
+
+    @GetMapping(value =  "/animation", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ExperimentResultImageListResponse> getAnimatedImages(
+            @RequestParam(name = "experiment_result_id") BigInteger experimentResultId,
+            @RequestParam(name = "start_step") Integer startStep,
+            @RequestParam(name = "end_step") Integer endStep,
+            @RequestParam(name = "duration", defaultValue = "1000") long duration) {
+
+        return experimentResultImageService.getAnimatedImages(experimentResultId, startStep, endStep, duration);
+    }
+
+    @GetMapping(value =  "/multi_experiment_animation", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ExperimentResultImageListResponse> getAnimatedImages(
+            @RequestParam(name = "experiment_result_id") String experimentResultIds,
+            @RequestParam(name = "start_step") Integer startStep,
+            @RequestParam(name = "end_step") Integer endStep,
+            @RequestParam(name = "duration", defaultValue = "1000") long duration) {
+
+        return experimentResultImageService.getMultiExperimentAnimatedImages(experimentResultIds, startStep, endStep, duration);
     }
 }

@@ -24,19 +24,21 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.util.Pair;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashSet;
-import java.util.List;
+import java.time.Duration;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -262,8 +264,7 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
             imageData.forEach(image -> {
                 if (image.getStep().equals(stepData.step())) {
                     final var base64EncodedImage = imageService.getImageDataEncoded(image.getLocation());
-                    stepData.categories().add(new ExperimentResultImageCategoryResponse(
-                            image.getExperimentResultCategoryId(), base64EncodedImage));
+                    stepData.categories().add(new ExperimentResultImageCategoryResponse(experimentResultId, image.getExperimentResultCategoryId(), base64EncodedImage));
                 }
             });
         });
@@ -274,13 +275,14 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
     private ExperimentResultImageListResponse getExperimentResultImageFromNode(BigInteger experimentResultId, Integer startStep, Integer endStep, Integer nodeId) {
         final var webClient = nodeService.getWebClientByNodeId(nodeId);
 
-        return fetchExperimentResultImageFromNode(webClient, experimentResultId, startStep, endStep);
-    }
-
-    private ExperimentResultImageListResponse fetchExperimentResultImageFromNode(WebClient webClient, BigInteger experimentResultId, Integer startStep, Integer endStep) {
         try {
-            final var response = webClient.get().uri("/api/v1/experiment_result_images?experiment_result_id=" + experimentResultId +
-                    "&start_step=" + startStep + "&end_step=" + endStep).retrieve().bodyToMono(ExperimentResultImageListResponse.class).block();
+            final var response = webClient.get().uri(
+                    uriBuilder -> uriBuilder.path("/api/v1/experiment_result_images")
+                            .queryParam("experiment_result_id", experimentResultId)
+                            .queryParam("start_step", startStep)
+                            .queryParam("end_step", endStep)
+                            .build()
+            ).retrieve().bodyToMono(ExperimentResultImageListResponse.class).block();
 
             if (response == null) {
                 throw new ExperimentResultImageNotFoundException(ExperimentResultImageErrors.E_ERI_0001.defaultMessage());
@@ -288,9 +290,163 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
 
             return response;
         } catch (Exception e) {
-            log.error("Error while fetching experiment result image: {}", e.getMessage());
+            log.error("Error while fetching experiment result image from node: {}", e.getMessage());
 
             throw new CannotFetchNodeDataException(e.getMessage());
         }
+    }
+
+
+    @Override
+    public Flux<ExperimentResultImageListResponse> getAnimatedImages(BigInteger experimentResultId, Integer startStep,
+                                                                     Integer endStep, long duration) {
+        final int CHUNK_SIZE = 10;
+
+        final var experimentResult = experimentResultRepository.findById(experimentResultId)
+                .orElseThrow(() -> new ExperimentResultNotFoundException(ExperimentResultErrors.E_ER_0001.defaultMessage()));
+
+        if (!nodeService.getCurrentNodeId().equals(experimentResult.getNodeId())) {
+            return getAnimatedImagesFromNode(experimentResultId, startStep, endStep, duration, experimentResult.getNodeId());
+        }
+
+        List<Pair<Integer, Integer>> chunks = new ArrayList<>();
+        for (int i = startStep; i <= endStep; i += CHUNK_SIZE) {
+            int chunkEnd = Math.min(i + CHUNK_SIZE - 1, endStep);
+            chunks.add(Pair.of(i, chunkEnd));
+        }
+
+        return Flux.fromIterable(chunks)
+                .concatMap(chunk -> {
+                    final var images = experimentResultImageRepository.findByRange(experimentResultId, chunk.getFirst(), chunk.getSecond(),
+                            authService.getCurrentUserId());
+
+                    final var groupedImages = images.stream()
+                            .collect(Collectors.groupingBy(ExperimentResultImage::getStep));
+
+                    return Flux.interval(Duration.ofMillis(duration))
+                            .take(chunk.getSecond() - chunk.getFirst() + 1)
+                            .flatMap(i -> {
+                                var step = i.intValue() + chunk.getFirst();
+                                var stepImages = groupedImages.get(step);
+                                if (stepImages == null) {
+                                    return Flux.empty();
+                                }
+
+                                var categories = stepImages.stream()
+                                        .map(image -> {
+                                            var base64EncodedImage = imageService.getImageDataEncoded(image.getLocation());
+                                            return new ExperimentResultImageCategoryResponse(experimentResultId,
+                                                    image.getExperimentResultCategoryId(), base64EncodedImage);
+                                        })
+                                        .collect(Collectors.toList());
+
+                                return Flux.just(new ExperimentResultImageListResponse(
+                                        List.of(new ExperimentResultImageStepResponse(step, categories))));
+                            });
+                });
+    }
+
+    @Override
+    public Flux<ExperimentResultImageListResponse> getMultiExperimentAnimatedImages(String experimentResultIds, Integer startStep,
+                                                                                    Integer endStep, long duration) {
+        final int CHUNK_SIZE = 10;
+
+        List<BigInteger> experimentResultIdList = Arrays.stream(experimentResultIds.split(","))
+                .map(BigInteger::new)
+                .collect(Collectors.toList());
+
+        List<Pair<Integer, Integer>> chunks = new ArrayList<>();
+        for (int i = startStep; i <= endStep; i += CHUNK_SIZE) {
+            int chunkEnd = Math.min(i + CHUNK_SIZE - 1, endStep);
+            chunks.add(Pair.of(i, chunkEnd));
+        }
+
+        return Flux.fromIterable(chunks)
+                .concatMap(chunk ->
+                        Flux.interval(Duration.ofNanos(duration))
+                                .take(chunk.getSecond() - chunk.getFirst() + 1)
+                                .flatMap(i -> {
+                                    int step = i.intValue() + chunk.getFirst();
+
+                                    return Flux.fromIterable(experimentResultIdList)
+                                            .flatMap(experimentResultId -> {
+                                                final var experimentResult = experimentResultRepository.findById(experimentResultId)
+                                                        .orElseThrow(() -> new ExperimentResultNotFoundException(ExperimentResultErrors.E_ER_0001.defaultMessage()));
+
+                                                if (!nodeService.getCurrentNodeId().equals(experimentResult.getNodeId())) {
+                                                    return getMultiExperimentAnimatedImagesFromNode(experimentResultId, step, step, duration, experimentResult.getNodeId());
+                                                }
+
+                                                final var images = experimentResultImageRepository.findByRange(experimentResultId, step, step,
+                                                        authService.getCurrentUserId());
+
+                                                if (images.isEmpty()) {
+                                                    return Flux.empty();
+                                                }
+
+                                                final var categories = images.stream()
+                                                        .map(image -> {
+                                                            var base64EncodedImage = imageService.getImageDataEncoded(image.getLocation());
+                                                            return new ExperimentResultImageCategoryResponse(experimentResultId,
+                                                                    image.getExperimentResultCategoryId(), base64EncodedImage);
+                                                        })
+                                                        .collect(Collectors.toList());
+
+                                                return Flux.just(new ExperimentResultImageListResponse(
+                                                        List.of(new ExperimentResultImageStepResponse(step, categories))));
+                                            })
+                                            .collectList()
+                                            .flatMapMany(responses -> {
+                                                // Merge all categories from different experimentResults into one response
+                                                List<ExperimentResultImageStepResponse> mergedStepResponses = new ArrayList<>();
+                                                List<ExperimentResultImageCategoryResponse> allCategories = new ArrayList<>();
+
+                                                for(ExperimentResultImageListResponse response : responses) {
+                                                    if(!response.steps().isEmpty()) {
+                                                        allCategories.addAll(response.steps().getFirst().categories());
+                                                    }
+                                                }
+
+                                                if(!allCategories.isEmpty()) {
+                                                    mergedStepResponses.add(new ExperimentResultImageStepResponse(step, allCategories));
+                                                    return Flux.just(new ExperimentResultImageListResponse(mergedStepResponses));
+                                                }
+
+                                                return Flux.empty();
+                                            });
+                                })
+                );
+    }
+
+    private Flux<ExperimentResultImageListResponse> getAnimatedImagesFromNode(BigInteger experimentResultId, Integer startStep,
+                                                                              Integer endStep, long duration, Integer nodeId) {
+        final var webClient = nodeService.getWebClientByNodeId(nodeId);
+
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/experiment_result_images/animation")
+                        .queryParam("experiment_result_id", experimentResultId)
+                        .queryParam("start_step", startStep)
+                        .queryParam("end_step", endStep)
+                        .queryParam("animation", true)
+                        .queryParam("duration", duration)
+                        .build())
+                .retrieve()
+                .bodyToFlux(ExperimentResultImageListResponse.class);
+    }
+
+    private Flux<ExperimentResultImageListResponse> getMultiExperimentAnimatedImagesFromNode(BigInteger experimentResultId, Integer startStep,
+                                                                                             Integer endStep, long duration, Integer nodeId) {
+        final var webClient = nodeService.getWebClientByNodeId(nodeId);
+
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/experiment_result_images/multi_experiment_animation")
+                        .queryParam("experiment_result_id", experimentResultId)
+                        .queryParam("start_step", startStep)
+                        .queryParam("end_step", endStep)
+                        .queryParam("animation", true)
+                        .queryParam("duration", duration)
+                        .build())
+                .retrieve()
+                .bodyToFlux(ExperimentResultImageListResponse.class);
     }
 }

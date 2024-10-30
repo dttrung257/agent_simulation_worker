@@ -80,6 +80,11 @@ public class ExperimentResultService implements IExperimentResultService {
         }
 
         final var consoleOutputFileName = fileUtil.getFileNameByPrefix(experimentResult.get().getLocation(), "console-output");
+        if (consoleOutputFileName == null) {
+            return new ExperimentProgressResponse(true, experimentResult.get().getStatus(), null,
+                    experimentResult.get().getFinalStep());
+        }
+
         final var simulationOutputLastLine = fileUtil.readLastLine(experimentResult.get().getLocation() + "/" + consoleOutputFileName, "step");
 
         var step = extractStep(simulationOutputLastLine);
@@ -93,6 +98,10 @@ public class ExperimentResultService implements IExperimentResultService {
     }
 
     private Integer extractStep(String line) {
+        if (line == null) {
+            return -1;
+        }
+
         int stepNumber = -1;
         try {
             final var pattern = Pattern.compile("step\\s+(\\d+)");
