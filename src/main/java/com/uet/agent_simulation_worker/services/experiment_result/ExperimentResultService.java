@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.FileInputStream;
@@ -42,8 +43,8 @@ public class ExperimentResultService implements IExperimentResultService {
     }
 
     @Override
-    public ExperimentResult recreate(Experiment experiment, long finalStep, String outputDir) {
-        experimentResultRepository.deleteByExperimentId(experiment.getId());
+    public ExperimentResult recreate(Experiment experiment, long finalStep, String outputDir, Integer experimentResultNumber) {
+        experimentResultRepository.deleteByExperimentIdAndExperimentResultNumber(experiment.getId(), experimentResultNumber, nodeService.getCurrentNodeId());
 
         // Save new experiment result.
         return experimentResultRepository.save(ExperimentResult.builder()
@@ -52,6 +53,7 @@ public class ExperimentResultService implements IExperimentResultService {
                 .finalStep((int) finalStep)
                 .node(nodeService.getCurrentNode())
                 .status(ExperimentResultStatusConst.PENDING)
+                .number(experimentResultNumber)
                 .build());
     }
 

@@ -12,7 +12,6 @@ import com.uet.agent_simulation_worker.models.projections.ExperimentResultImageD
 import com.uet.agent_simulation_worker.repositories.ExperimentResultImageRepository;
 import com.uet.agent_simulation_worker.repositories.ExperimentResultRepository;
 import com.uet.agent_simulation_worker.responses.Pagination;
-import com.uet.agent_simulation_worker.responses.SuccessResponse;
 import com.uet.agent_simulation_worker.responses.experiment_result_image.ExperimentResultImageCategoryResponse;
 import com.uet.agent_simulation_worker.responses.experiment_result_image.ExperimentResultImageDetailResponse;
 import com.uet.agent_simulation_worker.responses.experiment_result_image.ExperimentResultImageListResponse;
@@ -25,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.util.Pair;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -299,7 +297,7 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
 
     @Override
     public Flux<ExperimentResultImageListResponse> getAnimatedImages(BigInteger experimentResultId, Integer startStep,
-                                                                     Integer endStep, long duration) {
+         Integer endStep, long duration) {
         final int CHUNK_SIZE = 10;
 
         final var experimentResult = experimentResultRepository.findById(experimentResultId)
@@ -348,7 +346,7 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
 
     @Override
     public Flux<ExperimentResultImageListResponse> getMultiExperimentAnimatedImages(String experimentResultIds, Integer startStep,
-                                                                                    Integer endStep, long duration) {
+        Integer endStep, long duration) {
         final int CHUNK_SIZE = 10;
 
         List<BigInteger> experimentResultIdList = Arrays.stream(experimentResultIds.split(","))
@@ -419,7 +417,7 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
     }
 
     private Flux<ExperimentResultImageListResponse> getAnimatedImagesFromNode(BigInteger experimentResultId, Integer startStep,
-                                                                              Integer endStep, long duration, Integer nodeId) {
+            Integer endStep, long duration, Integer nodeId) {
         final var webClient = nodeService.getWebClientByNodeId(nodeId);
 
         return webClient.get()
@@ -435,7 +433,7 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
     }
 
     private Flux<ExperimentResultImageListResponse> getMultiExperimentAnimatedImagesFromNode(BigInteger experimentResultId, Integer startStep,
-                                                                                             Integer endStep, long duration, Integer nodeId) {
+            Integer endStep, long duration, Integer nodeId) {
         final var webClient = nodeService.getWebClientByNodeId(nodeId);
 
         return webClient.get()

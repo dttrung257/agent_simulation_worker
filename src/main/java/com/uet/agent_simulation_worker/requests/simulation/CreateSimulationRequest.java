@@ -26,6 +26,8 @@ public class CreateSimulationRequest {
 
     private Integer order;
 
+    private Integer number;
+
     @Valid
     @NotNull
     private List<CreateExperimentRequest> experiments;

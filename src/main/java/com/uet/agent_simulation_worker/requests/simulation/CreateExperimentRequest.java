@@ -24,8 +24,6 @@ public class CreateExperimentRequest {
 
     private String gamlFile;
 
-    private Integer experimentResultId;
-
     @NotNull(message = "Model id must not be null")
     private BigInteger modelId;
 

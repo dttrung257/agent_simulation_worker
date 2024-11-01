@@ -32,4 +32,15 @@ public interface ExperimentResultRepository extends JpaRepository<ExperimentResu
     @Modifying
     @Query("DELETE FROM ExperimentResult er WHERE er.experimentId = :experiment_id")
     void deleteByExperimentId(@Param("experiment_id") BigInteger experimentId);
+
+    @Transactional
+    @Modifying
+    @Query("""
+        DELETE FROM ExperimentResult er
+        WHERE er.experimentId = :experiment_id
+        AND er.number = :experiment_result_number
+        AND er.nodeId = :node_id
+    """)
+    void deleteByExperimentIdAndExperimentResultNumber(@Param("experiment_id") BigInteger experimentId,
+       @Param("experiment_result_number") Integer experimentResultNumber, @Param("node_id") Integer nodeId);
 }

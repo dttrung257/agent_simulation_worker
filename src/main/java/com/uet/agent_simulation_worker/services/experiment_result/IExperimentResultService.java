@@ -11,7 +11,7 @@ import java.util.List;
 public interface IExperimentResultService {
     List<ExperimentResult> get(BigInteger experimentId, BigInteger modelId, BigInteger projectId);
 
-    ExperimentResult recreate(Experiment experiment, long finalStep, String outputDir);
+    ExperimentResult recreate(Experiment experiment, long finalStep, String outputDir, Integer experimentResultNumber);
 
     void updateStatus(ExperimentResult experimentResult, int status);
 
