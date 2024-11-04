@@ -16,9 +16,18 @@ public class ExperimentResultResultCategoryService implements IExperimentResultC
     private final ExperimentResultCategoryRepository experimentResultCategoryRepository;
 
     @Override
-    public List<ExperimentResultCategory> get(BigInteger experimentResultId, BigInteger experimentId,
-          BigInteger modelId, BigInteger projectId) {
-        return experimentResultCategoryRepository.find(experimentResultId, experimentId, modelId, projectId,
-			authService.getCurrentUserId());
+    public List<ExperimentResultCategory> get(
+        BigInteger experimentResultId,
+        BigInteger experimentId,
+        BigInteger modelId,
+        BigInteger projectId
+    ) {
+        return experimentResultCategoryRepository.find(
+            experimentResultId,
+            experimentId,
+            modelId,
+            projectId,
+            authService.getCurrentUserId()
+        );
     }
 }

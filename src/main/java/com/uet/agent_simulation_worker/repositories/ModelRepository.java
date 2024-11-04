@@ -16,8 +16,10 @@ public interface ModelRepository extends JpaRepository<Model, BigInteger> {
             WHERE m.id = :model_id AND m.projectId = :project_id
         """
     )
-    Optional<Model> findByModeIdAndProjectId(@Param("model_id") BigInteger modelId,
-        @Param("project_id") BigInteger projectId);
+    Optional<Model> findByModeIdAndProjectId(
+        @Param("model_id") BigInteger modelId,
+        @Param("project_id") BigInteger projectId
+    );
 
     @Query(
         value = """
@@ -26,7 +28,10 @@ public interface ModelRepository extends JpaRepository<Model, BigInteger> {
             AND (:project_id IS NULL OR m.projectId = :project_id)
         """
     )
-    List<Model> find(@Param("user_id") BigInteger userId, @Param("project_id") BigInteger projectId);
+    List<Model> find(
+        @Param("user_id") BigInteger userId,
+        @Param("project_id") BigInteger projectId
+    );
 
     @Query(
         value = """
@@ -37,5 +42,8 @@ public interface ModelRepository extends JpaRepository<Model, BigInteger> {
             AND e.id IS NOT NULL
         """
     )
-    List<Model> findByExperimentNotNull(@Param("user_id") BigInteger userId, @Param("project_id") BigInteger projectId);
+    List<Model> findByExperimentNotNull(
+        @Param("user_id") BigInteger userId,
+        @Param("project_id") BigInteger projectId
+    );
 }

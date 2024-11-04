@@ -4,6 +4,7 @@ import com.uet.agent_simulation_worker.models.ExperimentResult;
 import com.uet.agent_simulation_worker.repositories.ExperimentResultRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -22,6 +23,9 @@ import java.util.concurrent.ExecutorService;
 public class GamaCommandExecutor implements IGamaCommandExecutor {
     private final ExecutorService virtualThreadExecutor;
     private final ExperimentResultRepository experimentResultRepository;
+
+    @Value("${gama.config.frame-rate}")
+    private int GAMA_FRAME_RATE;
 
     @Override
     public void execute(String command) {
@@ -59,8 +63,14 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
     }
 
     @Override
-    public CompletableFuture<Void> executeLegacy(String createXmlCommand, String runLegacyCommand, String pathToXmlFile,
-         BigInteger experimentId, String experimentName, long finalStep) {
+    public CompletableFuture<Void> executeLegacy(
+        String createXmlCommand,
+        String runLegacyCommand,
+        String pathToXmlFile,
+        BigInteger experimentId,
+        String experimentName,
+        long finalStep
+    ) {
         return CompletableFuture.runAsync(() -> {
             try {
                 // Prepare experiment plan xml file to run legacy command
@@ -97,8 +107,15 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
     }
 
     @Override
-    public CompletableFuture<Void> executeLegacy(String createXmlCommand, String runLegacyCommand, String pathToXmlFile,
-         BigInteger experimentId, String experimentName, long finalStep, ExperimentResult experimentResult) {
+    public CompletableFuture<Void> executeLegacy(
+        String createXmlCommand,
+        String runLegacyCommand,
+        String pathToXmlFile,
+        BigInteger experimentId,
+        String experimentName,
+        long finalStep,
+        ExperimentResult experimentResult
+    ) {
         return CompletableFuture.runAsync(() -> {
             try {
                 // Prepare experiment plan xml file to run legacy command
@@ -147,7 +164,12 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
      * @param experimentName String
      * @param finalStep long
      */
-    private void updateExperimentPlan(String pathToXmlFile, BigInteger experimentId, String experimentName, long finalStep) {
+    private void updateExperimentPlan(
+        String pathToXmlFile,
+        BigInteger experimentId,
+        String experimentName,
+        long finalStep
+    ) {
         try {
             // Read the file content into a string
             final var content = new StringBuilder();
@@ -167,6 +189,7 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
             xmlContent = xmlContent.replaceFirst("experiment=\"[^\"]*\"", "experiment=\"" + experimentName + "\"");
             xmlContent = xmlContent.replaceFirst("finalStep=\"[^\"]*\"", "finalStep=\"" + finalStep + "\"");
             xmlContent = xmlContent.replaceFirst("id=\"[^\"]*\"", "id=\"" + experimentId + "\"");
+            xmlContent = xmlContent.replaceAll("framerate=\"[^\"]*\"", "framerate=\"" + GAMA_FRAME_RATE + "\"");
 
             // Write the modified content back to the file
             try (final BufferedWriter writer = new BufferedWriter(new FileWriter(pathToXmlFile))) {

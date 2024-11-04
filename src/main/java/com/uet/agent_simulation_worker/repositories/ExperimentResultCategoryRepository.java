@@ -21,9 +21,11 @@ public interface ExperimentResultCategoryRepository extends JpaRepository<Experi
             AND (:project_id IS NULL OR e.projectId = :project_id)
         """
     )
-    List<ExperimentResultCategory> find(@Param("experiment_result_id") BigInteger experimentResultId,
-         @Param("experiment_id") BigInteger experimentId,
-         @Param("model_id") BigInteger modelId,
-         @Param("project_id") BigInteger projectId,
-         @Param("user_id") BigInteger userId);
+    List<ExperimentResultCategory> find(
+        @Param("experiment_result_id") BigInteger experimentResultId,
+        @Param("experiment_id") BigInteger experimentId,
+        @Param("model_id") BigInteger modelId,
+        @Param("project_id") BigInteger projectId,
+        @Param("user_id") BigInteger userId
+    );
 }

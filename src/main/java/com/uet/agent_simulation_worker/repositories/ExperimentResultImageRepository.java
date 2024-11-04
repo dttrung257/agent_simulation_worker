@@ -31,14 +31,16 @@ public interface ExperimentResultImageRepository extends JpaRepository<Experimen
             AND (:step IS NULL OR eri.step = :step)
         """
     )
-    Page<ExperimentResultImage> find(@Param("user_id") BigInteger userId,
+    Page<ExperimentResultImage> find(
+        @Param("user_id") BigInteger userId,
         @Param("experiment_result_id") BigInteger experimentResultId,
         @Param("experiment_id") BigInteger experimentId,
         @Param("model_id") BigInteger modelId,
         @Param("project_id") BigInteger projectId,
         @Param("experiment_result_category_id") BigInteger experimentResultCategoryId,
         @Param("step") Integer step,
-        Pageable pageable);
+        Pageable pageable
+    );
 
     @Query(
         value = """
@@ -49,8 +51,10 @@ public interface ExperimentResultImageRepository extends JpaRepository<Experimen
             AND e.userId = :user_id
         """
     )
-    Optional<ExperimentResultImage> findByIdAndUserId(@Param("id") BigInteger id,
-        @Param("user_id") BigInteger userId);
+    Optional<ExperimentResultImage> findByIdAndUserId(
+        @Param("id") BigInteger id,
+        @Param("user_id") BigInteger userId
+    );
 
     @Query(
         value = """
@@ -62,8 +66,10 @@ public interface ExperimentResultImageRepository extends JpaRepository<Experimen
             AND e.userId = :user_id
         """
     )
-    Optional<ExperimentResultImageDetailProjection> findDetailById(@Param("id") BigInteger id,
-        @Param("user_id") BigInteger userId);
+    Optional<ExperimentResultImageDetailProjection> findDetailById(
+        @Param("id") BigInteger id,
+        @Param("user_id") BigInteger userId
+    );
 
     @Query(
             value = """
@@ -76,8 +82,12 @@ public interface ExperimentResultImageRepository extends JpaRepository<Experimen
             AND e.userId = :user_id
         """
     )
-    List<ExperimentResultImage> findByRange(@Param("experiment_result_id") BigInteger experimentResultId, @Param("start_step") Integer startStep,
-                                            @Param("end_step") Integer endStep, @Param("user_id") BigInteger userId);
+    List<ExperimentResultImage> findByRange(
+        @Param("experiment_result_id") BigInteger experimentResultId,
+        @Param("start_step") Integer startStep,
+        @Param("end_step") Integer endStep,
+        @Param("user_id") BigInteger userId
+    );
 
     @Transactional
     @Modifying

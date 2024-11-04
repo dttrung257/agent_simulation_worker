@@ -16,8 +16,10 @@ public interface ExperimentRepository extends JpaRepository<Experiment, BigInteg
             WHERE e.id = :experiment_id AND e.modelId = :model_id
         """
     )
-    Optional<Experiment> findByExperimentIdAndModelId(@Param("experiment_id") BigInteger experimentId,
-        @Param("model_id") BigInteger modelId);
+    Optional<Experiment> findByExperimentIdAndModelId(
+        @Param("experiment_id") BigInteger experimentId,
+        @Param("model_id") BigInteger modelId
+    );
 
     @Query(
         value = """
@@ -27,6 +29,9 @@ public interface ExperimentRepository extends JpaRepository<Experiment, BigInteg
             AND (:model_id IS NULL OR e.modelId = :model_id)
         """
     )
-    List<Experiment> find(@Param("user_id") BigInteger userId, @Param("project_id") BigInteger projectId,
-        @Param("model_id") BigInteger modelId);
+    List<Experiment> find(
+        @Param("user_id") BigInteger userId,
+        @Param("project_id") BigInteger projectId,
+        @Param("model_id") BigInteger modelId
+    );
 }

@@ -5,21 +5,15 @@ import com.uet.agent_simulation_worker.commands.executors.IGamaCommandExecutor;
 import com.uet.agent_simulation_worker.constant.ExperimentResultStatusConst;
 import com.uet.agent_simulation_worker.constant.SimulationConst;
 import com.uet.agent_simulation_worker.exceptions.errors.ExperimentErrors;
-import com.uet.agent_simulation_worker.exceptions.errors.ModelErrors;
 import com.uet.agent_simulation_worker.exceptions.errors.ProjectErrors;
 import com.uet.agent_simulation_worker.exceptions.experiment.ExperimentNotFoundException;
-import com.uet.agent_simulation_worker.exceptions.model.ModelNotFoundException;
 import com.uet.agent_simulation_worker.exceptions.simulation.CannotClearOldSimulationOutputException;
 import com.uet.agent_simulation_worker.exceptions.project.ProjectNotFoundException;
 import com.uet.agent_simulation_worker.models.Experiment;
 import com.uet.agent_simulation_worker.models.ExperimentResult;
 import com.uet.agent_simulation_worker.models.ExperimentResultCategory;
 import com.uet.agent_simulation_worker.models.ExperimentResultImage;
-import com.uet.agent_simulation_worker.repositories.ExperimentRepository;
-import com.uet.agent_simulation_worker.repositories.ExperimentResultCategoryRepository;
-import com.uet.agent_simulation_worker.repositories.ExperimentResultImageRepository;
-import com.uet.agent_simulation_worker.repositories.ModelRepository;
-import com.uet.agent_simulation_worker.repositories.ProjectRepository;
+import com.uet.agent_simulation_worker.repositories.*;
 import com.uet.agent_simulation_worker.requests.simulation.CreateSimulationRequest;
 import com.uet.agent_simulation_worker.services.auth.IAuthService;
 import com.uet.agent_simulation_worker.services.experiment_result.IExperimentResultService;
@@ -57,24 +51,29 @@ import java.util.concurrent.ExecutorService;
 @Slf4j
 public class SimulationService implements ISimulationService {
     private final TimeUtil timeUtil;
+    private final FileUtil fileUtil;
     private final IS3Service s3Service;
     private final ConvertUtil convertUtil;
     private final IAuthService authService;
     private final INodeService nodeService;
     private final IImageService imageService;
-    private final ModelRepository modelRepository;
     private final ProjectRepository projectRepository;
     private final ExecutorService virtualThreadExecutor;
     private final IGamaCommandBuilder gamaCommandBuilder;
     private final IGamaCommandExecutor gamaCommandExecutor;
-    private final ExperimentRepository experimentRepository;
     private final IExperimentResultService experimentResultService;
+    private final ExperimentResultRepository experimentResultRepository;
     private final ExperimentResultImageRepository experimentResultImageRepository;
     private final ExperimentResultCategoryRepository experimentResultCategoryRepository;
-    private final FileUtil fileUtil;
 
-    @Value("${app.project.path}")
-    private String projectPath;
+    @Value("${gama.path.project}")
+    private String GAMA_PROJECT_ROOT_PATH;
+
+    @Value("${gama.path.output}")
+    private String GAMA_OUTPUT_DIR;
+
+    @Value("${gama.path.xml}")
+    private String GAMA_XML_FILE_PATH;
 
     @Override
     public void run() {
@@ -144,25 +143,11 @@ public class SimulationService implements ISimulationService {
         final var project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectNotFoundException(ProjectErrors.E_PJ_0001.defaultMessage()));
 
-        final var projectLocation = projectPath + project.getLocation();
-
-        final var experimentResultNumber = request.getNumber();
+        final var projectLocation = GAMA_PROJECT_ROOT_PATH + project.getLocation();
 
         request.getExperiments().forEach(experimentReq -> {
-            // Get model
-            final var model = modelRepository.findByModeIdAndProjectId(experimentReq.getModelId(), projectId)
-                    .orElseThrow(() -> new ModelNotFoundException(ModelErrors.E_MODEL_0001.defaultMessage()));
-
-            // Get experiment
-            final var experiment = experimentRepository
-                    .findByExperimentIdAndModelId(experimentReq.getId(), experimentReq.getModelId())
-                    .orElseThrow(() -> new ExperimentNotFoundException(ExperimentErrors.E_EXP_0001.defaultMessage()));
-
-            experimentReq.setGamlFile(model.getName() + ".gaml");
-            experimentReq.setExperiment(experiment);
-        });
-
-        request.getExperiments().forEach(experimentReq -> {
+            final var experimentResultNumber = experimentReq.getExperimentResultNumber();
+            log.info("################ Experiment result number: {}", experimentResultNumber);
             // Get experiment data from request.
             final var modelId = experimentReq.getModelId();
             final var experimentId = experimentReq.getId();
@@ -175,6 +160,10 @@ public class SimulationService implements ISimulationService {
             final var pathToLocalExperimentOutputDir = getPathToLocalExperimentOutputDir(nodeId, userId, projectId,
                 modelId, experimentId, experimentResultNumber, gamlFileName, experimentName);
 
+            // Get experiment result from database.
+            final var experimentResult = experimentResultRepository.findById(experimentReq.getExperimentResult().getId())
+                .orElseThrow(() -> new ExperimentNotFoundException(ExperimentErrors.E_EXP_0001.defaultMessage()));
+
             // Clear old xml file
             clearLocalResource(pathToExperimentPlanXmlFile);
 
@@ -185,28 +174,38 @@ public class SimulationService implements ISimulationService {
             // Build command to run experiment.
             final var runLegacyCommand = gamaCommandBuilder.buildLegacy(null, pathToExperimentPlanXmlFile, pathToLocalExperimentOutputDir);
 
-            // Recreate experiment result.
-            final var experimentResult = experimentResultService.recreate(experimentReq.getExperiment(), finalStep,
-                    pathToLocalExperimentOutputDir, experimentResultNumber);
-
             // Execute legacy command.
-            executeLegacy(createXmlCommand, runLegacyCommand, pathToExperimentPlanXmlFile,
-                    experimentReq.getExperiment(), finalStep, pathToLocalExperimentOutputDir, experimentResult);
+            executeLegacy(createXmlCommand, runLegacyCommand, pathToExperimentPlanXmlFile, experimentReq.getExperiment(),
+                finalStep, pathToLocalExperimentOutputDir, experimentResult);
         });
     }
 
-    private String getPathToExperimentPlanXmlFile(String nodeId, BigInteger userId, BigInteger projectId,
-            BigInteger modelId, BigInteger experimentId, int experimentResultNumber, String gamlFileName, String experimentName) {
-
-        return String.format("storage/xmls/node-%s_user-%s_project-%s_model-%s_experiment-%s_result-%s_%s-%s.xml",
-                nodeId, userId, projectId, modelId, experimentId, experimentResultNumber, gamlFileName, experimentName);
+    private String getPathToExperimentPlanXmlFile(
+        String nodeId,
+        BigInteger userId,
+        BigInteger projectId,
+        BigInteger modelId,
+        BigInteger experimentId,
+        BigInteger experimentResultNumber,
+        String gamlFileName,
+        String experimentName
+    ) {
+        return String.format("%s/node-%s_user-%s_project-%s_model-%s_experiment-%s_result-%s_%s-%s.xml",
+            GAMA_XML_FILE_PATH, nodeId, userId, projectId, modelId, experimentId, experimentResultNumber, gamlFileName, experimentName);
     }
 
-    private String getPathToLocalExperimentOutputDir(String nodeId, BigInteger userId, BigInteger projectId,
-            BigInteger modelId, BigInteger experimentId, int experimentResultNumber, String gamlFileName, String experimentName) {
-
-        return String.format("storage/outputs/node-%s_user-%s_project-%s_model-%s_experiment-%s_result-%s_%s-%s",
-                nodeId, userId, projectId, modelId, experimentId, experimentResultNumber, gamlFileName, experimentName);
+    private String getPathToLocalExperimentOutputDir(
+        String nodeId,
+        BigInteger userId,
+        BigInteger projectId,
+        BigInteger modelId,
+        BigInteger experimentId,
+        BigInteger experimentResultNumber,
+        String gamlFileName,
+        String experimentName
+    ) {
+        return String.format("%s/node-%s_user-%s_project-%s_model-%s_experiment-%s_result-%s_%s-%s",
+            GAMA_OUTPUT_DIR, nodeId, userId, projectId, modelId, experimentId, experimentResultNumber, gamlFileName, experimentName);
     }
 
     /**
@@ -228,61 +227,35 @@ public class SimulationService implements ISimulationService {
             experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.IN_PROGRESS);
 
             virtualThreadExecutor.submit(() -> {
-                final var clearResourceFuture = waitForClearLocalResource(pathToLocalExperimentOutputDir);
-                clearResourceFuture.whenComplete((clearResourceResult, clearResourceError) -> {
-                    if (clearResourceError != null) {
-                        log.error("Error while clearing local resource", clearResourceError);
+                // Execute commands
+                final var executeCommandFuture = gamaCommandExecutor.executeLegacy(createXmlCommand, runLegacyCommand,
+                        pathToExperimentPlanXmlFile, experimentId, experimentName, finalStep, experimentResult);
+
+                executeCommandFuture.whenComplete((executeCommandResult, executeCommandError) -> {
+                    if (executeCommandError != null) {
+                        log.error("Error while running simulation", executeCommandError);
+                        clearLocalResource(pathToLocalExperimentOutputDir);
+                        clearLocalResource(pathToExperimentPlanXmlFile);
+                        experimentResult.setRunCommandPid(null); // Clear run command pid.
                         experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.FAILED);
+
                         return;
                     }
 
-                    // Execute commands
-                    final var executeCommandFuture = gamaCommandExecutor.executeLegacy(createXmlCommand, runLegacyCommand,
-                            pathToExperimentPlanXmlFile, experimentId, experimentName, finalStep, experimentResult);
+                    log.info("Simulation completed for experiment: {}", experimentId);
+                    clearLocalResource(pathToExperimentPlanXmlFile);
 
-                    executeCommandFuture.whenComplete((executeCommandResult, executeCommandError) -> {
-                        if (executeCommandError != null) {
-                            log.error("Error while running simulation", executeCommandError);
-                            clearLocalResource(pathToLocalExperimentOutputDir);
-                            clearLocalResource(pathToExperimentPlanXmlFile);
-                            experimentResult.setRunCommandPid(null); // Clear run command pid.
-                            experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.FAILED);
-
-                            return;
-                        }
-
-                        log.info("Simulation completed for experiment: {}", experimentId);
-
-                        // If execution is successful, upload output directory to S3
-//                    clearOldS3Result(projectId, modelId, experimentId, experimentResultId);
-//                    uploadResult(projectId, modelId, experimentId, experimentResultId, pathToLocalExperimentOutputDir);
-//                    clearLocalResource(pathToLocalExperimentOutputDir);
-                        clearLocalResource(pathToExperimentPlanXmlFile);
-
-                        // Save result to database.
-//                    final var experimentResultKey = getOutputObjectKey(projectId, modelId, experimentId, experimentResultId);
-//                    final var experimentResultImageKeys = s3Service.listFileNamesInDirectory(experimentResultKey + "snapshot/");
-//                    if (experimentResultImageKeys.isEmpty()) {
-//                        log.error("No image found in S3 for experiment result: {}", experimentResultKey);
-//                        updateExperimentResultStatus(experimentResultStatus, ExperimentResultStatusConst.FAILED);
-//                        return;
-//                    }
-
-//                    saveResultS3(experimentResultImageKeys, experiment, experimentResultKey, finalStep, experimentResultStatus);
-
-                        // Sleep for 1 second to make sure all images are loaded.
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            log.error("Error while sleeping", e);
-                        }
-                        final var imageList = imageService.listImagesInDirectory(pathToLocalExperimentOutputDir + "/snapshot");
-                        saveResult(experimentResult, imageList, pathToLocalExperimentOutputDir);
-                    });
-
-                    executeCommandFuture.join();
+                    // Sleep for 1 second to make sure all images are loaded.
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        log.error("Error while sleeping", e);
+                    }
+                    final var imageList = imageService.listImagesInDirectory(pathToLocalExperimentOutputDir + "/snapshot");
+                    saveResult(experimentResult, imageList, pathToLocalExperimentOutputDir);
                 });
-                clearResourceFuture.join();
+
+                executeCommandFuture.join();
             });
         } catch (Exception e) {
             log.error("Error while executing legacy command: ", e);
@@ -374,7 +347,7 @@ public class SimulationService implements ISimulationService {
         long end = timeUtil.getCurrentTimeNano();
         log.info("Save experiment result images took: {} ns", end - start);
 
-        experimentResult.setRunCommandPid(null); // Clear run command pid.
+        experimentResult.setRunCommandPid(null); // Set run command pid to null after saving images.
         // Update experiment result status.
         experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.FINISHED);
 
@@ -395,18 +368,9 @@ public class SimulationService implements ISimulationService {
                 log.error("Experiment result is not finished, cannot prepare for download");
                 return;
             }
-            final var copyResultLocation = resultLocation + "-copy";
-            final var successMakeACopy = fileUtil.makeACopyFolder(resultLocation, copyResultLocation);
-            if (!successMakeACopy) return;
 
-            final var successSeparateImages = separateResultImagesIntoCategoryFolder(copyResultLocation, resultCategoryNames);
-            if (!successSeparateImages) return;
-
-            final var isSuccess = fileUtil.zipFolder(copyResultLocation);
+            final var isSuccess = fileUtil.zipFolder(resultLocation);
             if (!isSuccess) return;
-
-            fileUtil.rename(copyResultLocation + ".zip", resultLocation + ".zip");
-            fileUtil.delete(copyResultLocation);
 
             experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.READY_FOR_DOWNLOAD);
         });

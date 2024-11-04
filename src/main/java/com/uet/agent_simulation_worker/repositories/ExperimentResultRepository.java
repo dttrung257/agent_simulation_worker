@@ -24,9 +24,10 @@ public interface ExperimentResultRepository extends JpaRepository<ExperimentResu
         """
     )
     List<ExperimentResult> find(@Param("user_id") BigInteger userId,
-            @Param("experiment_id") BigInteger experimentId,
-            @Param("model_id") BigInteger modelId,
-            @Param("project_id") BigInteger projectId);
+        @Param("experiment_id") BigInteger experimentId,
+        @Param("model_id") BigInteger modelId,
+        @Param("project_id") BigInteger projectId
+    );
 
     @Transactional
     @Modifying
@@ -41,6 +42,9 @@ public interface ExperimentResultRepository extends JpaRepository<ExperimentResu
         AND er.number = :experiment_result_number
         AND er.nodeId = :node_id
     """)
-    void deleteByExperimentIdAndExperimentResultNumber(@Param("experiment_id") BigInteger experimentId,
-       @Param("experiment_result_number") Integer experimentResultNumber, @Param("node_id") Integer nodeId);
+    void deleteByExperimentIdAndExperimentResultNumber(
+        @Param("experiment_id") BigInteger experimentId,
+        @Param("experiment_result_number") Integer experimentResultNumber,
+        @Param("node_id") Integer nodeId
+    );
 }

@@ -1,6 +1,7 @@
 package com.uet.agent_simulation_worker.requests.simulation;
 
 import com.uet.agent_simulation_worker.models.Experiment;
+import com.uet.agent_simulation_worker.models.ExperimentResult;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -28,6 +29,10 @@ public class CreateExperimentRequest {
     private BigInteger modelId;
 
     private Experiment experiment;
+
+    private BigInteger experimentResultNumber;
+
+    private ExperimentResult experimentResult;
 
     @Min(value = 1, message = "Final step must be greater than or equal to 1")
     private Long finalStep;

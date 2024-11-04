@@ -1,10 +1,8 @@
 package com.uet.agent_simulation_worker.services.experiment_result;
 
-import com.uet.agent_simulation_worker.constant.ExperimentResultStatusConst;
 import com.uet.agent_simulation_worker.exceptions.errors.ExperimentResultErrors;
 import com.uet.agent_simulation_worker.exceptions.experiment_result.ExperimentResultNotFoundException;
 import com.uet.agent_simulation_worker.exceptions.node.CannotFetchNodeDataException;
-import com.uet.agent_simulation_worker.models.Experiment;
 import com.uet.agent_simulation_worker.models.ExperimentResult;
 import com.uet.agent_simulation_worker.repositories.ExperimentResultRepository;
 import com.uet.agent_simulation_worker.responses.experiment_result.DownloadExperimentResultResponse;
@@ -17,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.FileInputStream;
@@ -40,21 +37,6 @@ public class ExperimentResultService implements IExperimentResultService {
     @Override
     public List<ExperimentResult> get(BigInteger experimentId, BigInteger modelId, BigInteger projectId) {
         return experimentResultRepository.find(authService.getCurrentUserId(), experimentId, modelId, projectId);
-    }
-
-    @Override
-    public ExperimentResult recreate(Experiment experiment, long finalStep, String outputDir, Integer experimentResultNumber) {
-        experimentResultRepository.deleteByExperimentIdAndExperimentResultNumber(experiment.getId(), experimentResultNumber, nodeService.getCurrentNodeId());
-
-        // Save new experiment result.
-        return experimentResultRepository.save(ExperimentResult.builder()
-                .experiment(experiment)
-                .location(outputDir)
-                .finalStep((int) finalStep)
-                .node(nodeService.getCurrentNode())
-                .status(ExperimentResultStatusConst.PENDING)
-                .number(experimentResultNumber)
-                .build());
     }
 
     @Override
