@@ -449,6 +449,11 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
                     .queryParam("duration", duration)
                     .build())
                 .retrieve()
-                .bodyToFlux(ExperimentResultImageListResponse.class);
+                .bodyToFlux(ExperimentResultImageListResponse.class)
+                .onErrorResume(throwable -> {
+                    log.error("Error fetching animated images from node {}: {}", nodeId, throwable.getMessage());
+
+                    return Flux.just(new ExperimentResultImageListResponse(new ArrayList<>()));
+                });
     }
 }

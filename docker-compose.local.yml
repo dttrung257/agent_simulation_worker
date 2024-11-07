@@ -1,16 +1,15 @@
 services:
   api:
-    container_name: agent_simulation_dev_worker
-    restart: always
+    container_name: agent_simulation_local_worker
     build:
       context: .
-      dockerfile: ./docker/development/api/Dockerfile
+      dockerfile: ./docker/local/api/Dockerfile
     volumes:
       - ./:/app
       - ./projects:/app/projects
       - ./gama/gama-platform:/opt/gama-platform
     ports:
-      - "8080:8080"
+      - "9998:9998"
     networks:
       - agent_simulation_net
 
