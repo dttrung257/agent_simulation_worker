@@ -1,0 +1,15 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: agent-simulation-api
+  threads:
+    virtual:
+      enabled: true
+
+app:
+  timezone: UTC+7
+
+cluster:
+  node_id: 2
+  node_role: 2

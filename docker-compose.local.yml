@@ -1,0 +1,18 @@
+services:
+  api:
+    container_name: agent_simulation_local_worker
+    build:
+      context: .
+      dockerfile: ./docker/local/api/Dockerfile
+    volumes:
+      - ./:/app
+      - ./projects:/app/projects
+      - ./gama/gama-platform:/opt/gama-platform
+    ports:
+      - "9998:9998"
+    networks:
+      - agent_simulation_net
+
+networks:
+  agent_simulation_net:
+    driver: bridge
