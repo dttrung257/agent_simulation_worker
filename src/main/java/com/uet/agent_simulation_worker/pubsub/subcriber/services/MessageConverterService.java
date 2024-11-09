@@ -2,6 +2,7 @@ package com.uet.agent_simulation_worker.pubsub.subcriber.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uet.agent_simulation_worker.pubsub.PubSubCommands;
+import com.uet.agent_simulation_worker.pubsub.message.master.simulation.DeleteSimulationResult;
 import com.uet.agent_simulation_worker.pubsub.message.master.simulation.RunSimulation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
@@ -80,6 +81,7 @@ public class MessageConverterService implements MessageConverter {
     public Object getMessageData(String command, Message message) {
         return switch (command) {
             case PubSubCommands.RUN_SIMULATION -> getRunSimulationData(message);
+            case PubSubCommands.DELETE_SIMULATION_RESULT -> getDeleteSimulationResultData(message);
             default -> null;
         };
     }
@@ -94,6 +96,25 @@ public class MessageConverterService implements MessageConverter {
         RunSimulation data;
         try {
             data = objectMapper.readValue(message.toString(), RunSimulation.class);
+
+            return data;
+        } catch (Exception e) {
+            log.error("Error while parsing pubsub message", e);
+
+            return null;
+        }
+    }
+
+    /**
+     * Get the delete simulation result data from the message.
+     *
+     * @param message The message to get the delete simulation result data from.
+     * @return The delete simulation result data from the message.
+     */
+    private DeleteSimulationResult getDeleteSimulationResultData(Message message) {
+        DeleteSimulationResult data;
+        try {
+            data = objectMapper.readValue(message.toString(), DeleteSimulationResult.class);
 
             return data;
         } catch (Exception e) {

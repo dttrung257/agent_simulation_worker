@@ -46,6 +46,9 @@ public class ExperimentResult extends Auditable {
     @Column(columnDefinition = "BIGINT")
     private BigInteger number;
 
+    @Column(columnDefinition = "BIGINT", name = "simulation_run_id")
+    private BigInteger simulationRunId;
+
     @Column(name = "experiment_id", nullable = false, insertable = false, updatable = false, columnDefinition = "BIGINT")
     private BigInteger experimentId;
 

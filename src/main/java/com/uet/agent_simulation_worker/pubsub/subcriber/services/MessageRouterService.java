@@ -1,6 +1,7 @@
 package com.uet.agent_simulation_worker.pubsub.subcriber.services;
 
 import com.uet.agent_simulation_worker.pubsub.PubSubCommands;
+import com.uet.agent_simulation_worker.pubsub.message.master.simulation.DeleteSimulationResult;
 import com.uet.agent_simulation_worker.pubsub.message.master.simulation.RunSimulation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,10 @@ public class MessageRouterService implements MessageRouter {
         switch (command) {
             case PubSubCommands.RUN_SIMULATION:
                 messageHandler.runSimulation((RunSimulation) messageData);
+                break;
+
+            case PubSubCommands.DELETE_SIMULATION_RESULT:
+                messageHandler.deleteSimulationResult((DeleteSimulationResult) messageData);
                 break;
         }
     }
