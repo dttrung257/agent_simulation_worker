@@ -14,6 +14,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
@@ -64,12 +65,12 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
 
     @Override
     public CompletableFuture<Void> executeLegacy(
-        String createXmlCommand,
-        String runLegacyCommand,
-        String pathToXmlFile,
-        BigInteger experimentId,
-        String experimentName,
-        long finalStep
+            String createXmlCommand,
+            String runLegacyCommand,
+            String pathToXmlFile,
+            BigInteger experimentId,
+            String experimentName,
+            long finalStep
     ) {
         return CompletableFuture.runAsync(() -> {
             try {
@@ -89,7 +90,7 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
 
                     // update experiment plan
                     log.info("Start updating experiment plan: {}", pathToXmlFile);
-                    this.updateExperimentPlan(pathToXmlFile, experimentId, experimentName, finalStep);
+                    this.updateExperimentPlan(pathToXmlFile, experimentId, experimentName, finalStep, null);
                     log.info("Finish updating experiment plan: {}", pathToXmlFile);
                 }
 
@@ -97,6 +98,10 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
                 if (runLegacyCommand != null) {
                     log.info("Start running legacy command: {}", runLegacyCommand);
                     final var runLegacyProcess = (new ProcessBuilder()).command("bash", "-c", runLegacyCommand).start();
+
+                    final var processId = runLegacyProcess.pid();
+                    log.info("Legacy process ID: {}", processId);
+
                     this.getCommandOutput(runLegacyProcess);
                     log.info("Finish running legacy command: {}", runLegacyCommand);
                 }
@@ -108,13 +113,13 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
 
     @Override
     public CompletableFuture<Void> executeLegacy(
-        String createXmlCommand,
-        String runLegacyCommand,
-        String pathToXmlFile,
-        BigInteger experimentId,
-        String experimentName,
-        long finalStep,
-        ExperimentResult experimentResult
+            String createXmlCommand,
+            String runLegacyCommand,
+            String pathToXmlFile,
+            BigInteger experimentId,
+            String experimentName,
+            long finalStep,
+            ExperimentResult experimentResult
     ) {
         return CompletableFuture.runAsync(() -> {
             try {
@@ -134,7 +139,49 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
 
                     // update experiment plan
                     log.info("Start updating experiment plan: {}", pathToXmlFile);
-                    this.updateExperimentPlan(pathToXmlFile, experimentId, experimentName, finalStep);
+                    this.updateExperimentPlan(pathToXmlFile, experimentId, experimentName, finalStep, null);
+                    log.info("Finish updating experiment plan: {}", pathToXmlFile);
+                }
+
+                // Run legacy command
+                if (runLegacyCommand != null) {
+                    log.info("Start running legacy command: {}", runLegacyCommand);
+                    final var runLegacyProcess = (new ProcessBuilder()).command("bash", "-c", runLegacyCommand).start();
+
+                    final var processId = runLegacyProcess.pid();
+                    experimentResult.setRunCommandPid(processId);
+                    experimentResultRepository.save(experimentResult);
+
+                    this.getCommandOutput(runLegacyProcess);
+                    log.info("Finish running legacy command: {}", runLegacyCommand);
+                }
+            } catch (Exception e) {
+                log.error("Error while executing legacy command: {}", runLegacyCommand, e);
+            }
+        }, virtualThreadExecutor);
+    }
+
+    @Override
+    public CompletableFuture<Void> executeLegacy(String createXmlCommand, String runLegacyCommand, String pathToXmlFile, BigInteger experimentId, String experimentName, long finalStep, ExperimentResult experimentResult, Map<String, String> params) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                // Prepare experiment plan xml file to run legacy command
+                if (createXmlCommand != null) {
+                    log.info("Start creating xml file: {}", pathToXmlFile);
+                    final Process createXmlProcess = (new ProcessBuilder()).command("bash", "-c", createXmlCommand).start();
+                    this.getCommandOutput(createXmlProcess);
+
+                    // Wait until create and update xml file done.
+                    final int createXmlExitCode = createXmlProcess.waitFor();
+                    if (createXmlExitCode != 0) {
+                        log.error("createXmlCommand failed with exit code: {}", createXmlExitCode);
+                        return;
+                    }
+                    log.info("Finish creating xml file: {}", pathToXmlFile);
+
+                    // update experiment plan
+                    log.info("Start updating experiment plan: {}", pathToXmlFile);
+                    this.updateExperimentPlan(pathToXmlFile, experimentId, experimentName, finalStep, params);
                     log.info("Finish updating experiment plan: {}", pathToXmlFile);
                 }
 
@@ -165,10 +212,11 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
      * @param finalStep long
      */
     private void updateExperimentPlan(
-        String pathToXmlFile,
-        BigInteger experimentId,
-        String experimentName,
-        long finalStep
+            String pathToXmlFile,
+            BigInteger experimentId,
+            String experimentName,
+            long finalStep,
+            Map<String, String> params
     ) {
         try {
             // Read the file content into a string
@@ -190,6 +238,26 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
             xmlContent = xmlContent.replaceFirst("finalStep=\"[^\"]*\"", "finalStep=\"" + finalStep + "\"");
             xmlContent = xmlContent.replaceFirst("id=\"[^\"]*\"", "id=\"" + experimentId + "\"");
             xmlContent = xmlContent.replaceAll("framerate=\"[^\"]*\"", "framerate=\"" + GAMA_FRAME_RATE + "\"");
+
+            if (params != null) {
+                for (Map.Entry<String, String> entry : params.entrySet()) {
+                    String paramName = entry.getKey();
+                    String paramValue = entry.getValue();
+
+                    String paramPattern = "<Parameter name=\"" + paramName + "\"\\s+type=\"([^\"]+)\"[^>]*value=\"[^\"]*\"";
+
+                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(paramPattern);
+                    java.util.regex.Matcher matcher = pattern.matcher(xmlContent);
+
+                    if (matcher.find()) {
+                        String currentType = matcher.group(1);
+
+                        String replacementPattern = "<Parameter name=\"" + paramName + "\" type=\"" + currentType + "\" value=\"" + paramValue + "\"";
+
+                        xmlContent = xmlContent.replaceFirst(paramPattern, replacementPattern);
+                    }
+                }
+            }
 
             // Write the modified content back to the file
             try (final BufferedWriter writer = new BufferedWriter(new FileWriter(pathToXmlFile))) {

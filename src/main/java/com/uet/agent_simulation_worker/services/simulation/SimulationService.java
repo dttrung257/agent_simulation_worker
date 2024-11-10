@@ -225,11 +225,14 @@ public class SimulationService implements ISimulationService {
             final var experimentId = experiment.getId();
             final var experimentName = experiment.getName();
             experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.IN_PROGRESS);
+            final Map<String, String> params = Map.of(
+                    "Run ID", experimentResult.getSimulationRunId().toString()
+            );
 
             virtualThreadExecutor.submit(() -> {
                 // Execute commands
                 final var executeCommandFuture = gamaCommandExecutor.executeLegacy(createXmlCommand, runLegacyCommand,
-                        pathToExperimentPlanXmlFile, experimentId, experimentName, finalStep, experimentResult);
+                        pathToExperimentPlanXmlFile, experimentId, experimentName, finalStep, experimentResult, params);
 
                 executeCommandFuture.whenComplete((executeCommandResult, executeCommandError) -> {
                     if (executeCommandError != null) {
