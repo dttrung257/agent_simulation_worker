@@ -1,6 +1,6 @@
 services:
   api:
-    container_name: agent_simulation_local_worker
+    container_name: ags_local_worker
     build:
       context: .
       dockerfile: ./docker/local/api/Dockerfile
@@ -11,8 +11,8 @@ services:
     ports:
       - "9998:9998"
     networks:
-      - agent_simulation_net
+      - ags_worker_network
 
 networks:
-  agent_simulation_net:
+  ags_worker_network:
     driver: bridge

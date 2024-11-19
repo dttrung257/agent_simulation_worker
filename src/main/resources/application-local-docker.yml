@@ -1,4 +1,4 @@
-# THIS FILE IS USED FOR LOCAL ENVIRONMENT - RUN WITHOUT DOCKER
+# THIS FILE IS USED FOR LOCAL ENVIRONMENT - RUN WITH DOCKER
 server:
   port: 9998
 
@@ -14,7 +14,7 @@ logging:
 # Config database
 spring:
   datasource:
-    url: jdbc:mysql://localhost:13306/ags?rewriteBatchedStatements=true
+    url: jdbc:mysql://host.docker.internal:13306/ags?rewriteBatchedStatements=true
     username: agsuser
     password: 123
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -33,7 +33,7 @@ spring:
       format_sql: true
   data:
     redis:
-      host: localhost
+      host: host.docker.internal
       port: 16379
       password: 123
       database: 0
@@ -52,10 +52,10 @@ jwt:
 
 gama:
   path:
-    shell: gama/gama-platform/headless/gama-headless.sh
-    output: /Users/trungdt/Workspaces/uet/agent_simulation/gama/outputs
-    xml: /Users/trungdt/Workspaces/uet/agent_simulation/gama/xmls
-    project: /Users/trungdt/Workspaces/uet/agent_simulation/gama/projects
+    shell: /opt/gama-platform/headless/gama-headless.sh
+    output: /app/storage/outputs
+    xml: /app/storage/xmls
+    project: /app/projects
   config:
     frame-rate: 45
 

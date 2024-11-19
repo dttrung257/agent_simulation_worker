@@ -1,6 +1,6 @@
 services:
   api:
-    container_name: agent_simulation_dev_worker
+    container_name: ags_dev_worker
     restart: always
     build:
       context: .
@@ -12,8 +12,8 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - agent_simulation_net
+      - ags_worker_network
 
 networks:
-  agent_simulation_net:
+  ags_worker_network:
     driver: bridge

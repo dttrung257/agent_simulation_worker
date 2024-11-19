@@ -102,6 +102,7 @@ public interface ExperimentResultImageRepository extends JpaRepository<Experimen
             WHERE eri.experimentResultId IN :experimentResultIds
             AND eri.step BETWEEN :startStep AND :endStep
             AND e.userId = :userId
+            AND (:categoryIds IS NULL OR eri.experimentResultCategoryId IN :categoryIds)
             ORDER BY eri.experimentResultId, eri.step
         """
     )
@@ -109,6 +110,7 @@ public interface ExperimentResultImageRepository extends JpaRepository<Experimen
             @Param("experimentResultIds") List<BigInteger> experimentResultIds,
             @Param("startStep") Integer startStep,
             @Param("endStep") Integer endStep,
-            @Param("userId") BigInteger userId
+            @Param("userId") BigInteger userId,
+            @Param("categoryIds") List<BigInteger> categoryIds
     );
 }

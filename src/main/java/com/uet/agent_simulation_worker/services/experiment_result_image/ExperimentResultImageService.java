@@ -358,9 +358,13 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
             String experimentResultIds,
             Integer startStep,
             Integer endStep,
-            long duration
+            long duration,
+            String categoryIds
     ) {
         final int CHUNK_SIZE = 10;
+        final var categoryIdList = categoryIds == null ? null : Arrays.stream(categoryIds.split(","))
+                .map(BigInteger::new)
+                .toList();
 
         final List<BigInteger> experimentResultIdList = Arrays.stream(experimentResultIds.split(","))
                 .map(BigInteger::new)
@@ -407,7 +411,7 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
                         Flux<ExperimentResultImageListResponse> localImagesFlux = Flux.empty();
                         if (!localExperimentIds.isEmpty()) {
                             final List<ExperimentResultImage> allImages = experimentResultImageRepository
-                                    .findByRangeForMultipleExperiments(localExperimentIds, step, step, authService.getCurrentUserId());
+                                    .findByRangeForMultipleExperiments(localExperimentIds, step, step, authService.getCurrentUserId(), categoryIdList);
 
                             final Map<BigInteger, List<ExperimentResultImage>> imagesByExperiment = allImages.stream()
                                     .collect(Collectors.groupingBy(ExperimentResultImage::getExperimentResultId));
