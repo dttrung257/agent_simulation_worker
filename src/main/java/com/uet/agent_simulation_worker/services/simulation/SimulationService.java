@@ -18,6 +18,7 @@ import com.uet.agent_simulation_worker.requests.simulation.CreateSimulationReque
 import com.uet.agent_simulation_worker.services.auth.IAuthService;
 import com.uet.agent_simulation_worker.services.experiment_result.IExperimentResultService;
 import com.uet.agent_simulation_worker.services.image.IImageService;
+import com.uet.agent_simulation_worker.services.metric.MetricsCollectionService;
 import com.uet.agent_simulation_worker.services.node.INodeService;
 import com.uet.agent_simulation_worker.utils.ConvertUtil;
 import com.uet.agent_simulation_worker.utils.FileUtil;
@@ -64,6 +65,7 @@ public class SimulationService implements ISimulationService {
     private final ExperimentResultRepository experimentResultRepository;
     private final ExperimentResultImageRepository experimentResultImageRepository;
     private final ExperimentResultCategoryRepository experimentResultCategoryRepository;
+    private final MetricsCollectionService metricsCollectionService;
 
     @Value("${gama.path.project}")
     private String GAMA_PROJECT_ROOT_PATH;
@@ -171,7 +173,7 @@ public class SimulationService implements ISimulationService {
                     experimentName,  projectLocation + "/models/" + gamlFile, pathToExperimentPlanXmlFile);
 
             // Build command to run experiment.
-            final var runLegacyCommand = gamaCommandBuilder.buildLegacy(null, pathToExperimentPlanXmlFile, pathToLocalExperimentOutputDir);
+            final var runLegacyCommand = gamaCommandBuilder.buildLegacy(Map.of("-hpc", "1"), pathToExperimentPlanXmlFile, pathToLocalExperimentOutputDir);
 
             // Execute legacy command.
             executeLegacy(createXmlCommand, runLegacyCommand, pathToExperimentPlanXmlFile, experimentReq.getExperiment(),
@@ -231,6 +233,7 @@ public class SimulationService implements ISimulationService {
         try {
             final var experimentId = experiment.getId();
             final var experimentName = experiment.getName();
+            long start = timeUtil.getCurrentTimeNano();
             experimentResultService.updateStatus(experimentResult, ExperimentResultStatusConst.IN_PROGRESS);
 
             if (gamaParams != null) {
@@ -238,6 +241,7 @@ public class SimulationService implements ISimulationService {
             }
 
             virtualThreadExecutor.submit(() -> {
+                metricsCollectionService.startCollecting(experimentResult.getSimulationRunId());
                 // Execute commands
                 final var executeCommandFuture = gamaCommandExecutor.executeLegacy(createXmlCommand, runLegacyCommand,
                         pathToExperimentPlanXmlFile, experimentId, experimentName, finalStep, experimentResult, gamaParams);
@@ -245,6 +249,8 @@ public class SimulationService implements ISimulationService {
                 executeCommandFuture.whenComplete((executeCommandResult, executeCommandError) -> {
                     if (executeCommandError != null) {
                         log.error("Error while running simulation", executeCommandError);
+
+                        metricsCollectionService.stopCollecting(experimentResult.getSimulationRunId());
                         clearLocalResource(pathToLocalExperimentOutputDir);
                         clearLocalResource(pathToExperimentPlanXmlFile);
                         experimentResult.setRunCommandPid(null); // Clear run command pid.
@@ -252,6 +258,11 @@ public class SimulationService implements ISimulationService {
 
                         return;
                     }
+
+                    long runTime = timeUtil.getCurrentTimeNano() - start;
+                    experimentResult.setRunTime(runTime);
+
+                    metricsCollectionService.stopCollecting(experimentResult.getSimulationRunId());
 
                     log.info("Simulation completed for experiment: {}", experimentId);
 //                    clearLocalResource(pathToExperimentPlanXmlFile);

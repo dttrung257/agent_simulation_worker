@@ -55,6 +55,8 @@ public class ExperimentResult extends Auditable {
     @Column(name = "node_id", nullable = false, insertable = false, updatable = false)
     private Integer nodeId;
 
+    private Long runTime;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "experiment_id", referencedColumnName = "id")
     @JsonIgnore
