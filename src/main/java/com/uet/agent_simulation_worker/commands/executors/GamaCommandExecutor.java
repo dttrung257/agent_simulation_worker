@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
@@ -232,12 +233,15 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
 
             // Convert the content to a string
             var xmlContent = content.toString();
+            final var seed = generateRandomSeed();
+            log.info("Seed value: {}", seed);
 
             // Replace the first occurrence of each attribute
             xmlContent = xmlContent.replaceFirst("experiment=\"[^\"]*\"", "experiment=\"" + experimentName + "\"");
             xmlContent = xmlContent.replaceFirst("finalStep=\"[^\"]*\"", "finalStep=\"" + finalStep + "\"");
             xmlContent = xmlContent.replaceFirst("id=\"[^\"]*\"", "id=\"" + experimentId + "\"");
             xmlContent = xmlContent.replaceAll("framerate=\"[^\"]*\"", "framerate=\"" + GAMA_FRAME_RATE + "\"");
+            xmlContent = xmlContent.replaceAll("seed=\"[^\"]*\"", "seed=\"" + seed + "\"");
 
             if (params != null) {
                 for (Map.Entry<String, String> entry : params.entrySet()) {
@@ -268,5 +272,11 @@ public class GamaCommandExecutor implements IGamaCommandExecutor {
         } catch (IOException e) {
             log.error("Error while updating experiment plan: ", e);
         }
+    }
+
+    public double generateRandomSeed() {
+        final var random = new Random();
+
+        return Math.round((1.0 + random.nextDouble() * 99999.0) * 10.0) / 10.0;
     }
 }
