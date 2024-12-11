@@ -1,4 +1,4 @@
-package com.uet.agent_simulation_worker.config;
+package com.uet.agent_simulation_worker.configs;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

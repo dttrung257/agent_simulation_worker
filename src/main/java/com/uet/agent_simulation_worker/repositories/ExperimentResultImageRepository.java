@@ -93,4 +93,24 @@ public interface ExperimentResultImageRepository extends JpaRepository<Experimen
     @Modifying
     @Query("DELETE FROM ExperimentResultImage eri WHERE eri.experimentResultId = :experiment_result_id")
     void deleteByExperimentResultId(@Param("experiment_result_id") BigInteger experimentResultId);
+
+    @Query(
+        """
+            SELECT eri FROM ExperimentResultImage eri
+            JOIN ExperimentResult er ON eri.experimentResultId = er.id
+            JOIN Experiment e ON er.experimentId = e.id
+            WHERE eri.experimentResultId IN :experimentResultIds
+            AND eri.step BETWEEN :startStep AND :endStep
+            AND e.userId = :userId
+            AND (:categoryIds IS NULL OR eri.experimentResultCategoryId IN :categoryIds)
+            ORDER BY eri.experimentResultId, eri.step
+        """
+    )
+    List<ExperimentResultImage> findByRangeForMultipleExperiments(
+            @Param("experimentResultIds") List<BigInteger> experimentResultIds,
+            @Param("startStep") Integer startStep,
+            @Param("endStep") Integer endStep,
+            @Param("userId") BigInteger userId,
+            @Param("categoryIds") List<BigInteger> categoryIds
+    );
 }

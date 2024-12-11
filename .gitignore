@@ -39,7 +39,7 @@ out/
 ## project files
 logs/*.log
 application.yml
-application-*.yml
+#application-*.yml
 .workspace*/
-docker-compose.yml
+#docker-compose.yml
 cluster-config.yml

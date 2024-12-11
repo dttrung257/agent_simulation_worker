@@ -92,8 +92,9 @@ public class ExperimentResultImageController {
             @RequestParam(name = "experiment_result_id") String experimentResultIds,
             @RequestParam(name = "start_step") Integer startStep,
             @RequestParam(name = "end_step") Integer endStep,
-            @RequestParam(name = "duration", defaultValue = "1000") long duration) {
-
-        return experimentResultImageService.getMultiExperimentAnimatedImages(experimentResultIds, startStep, endStep, duration);
+            @RequestParam(name = "duration", defaultValue = "1000") long duration,
+            @RequestParam(name = "category_ids", required = false) String categoryIds
+    ) {
+        return experimentResultImageService.getMultiExperimentAnimatedImages(experimentResultIds, startStep, endStep, duration, categoryIds);
     }
 }

@@ -7,6 +7,7 @@ import com.uet.agent_simulation_worker.exceptions.experiment_result.ExperimentRe
 import com.uet.agent_simulation_worker.exceptions.experiment_result_image.ExperimentResultImageDataReadException;
 import com.uet.agent_simulation_worker.exceptions.experiment_result_image.ExperimentResultImageNotFoundException;
 import com.uet.agent_simulation_worker.exceptions.node.CannotFetchNodeDataException;
+import com.uet.agent_simulation_worker.models.ExperimentResult;
 import com.uet.agent_simulation_worker.models.ExperimentResultImage;
 import com.uet.agent_simulation_worker.models.projections.ExperimentResultImageDetailProjection;
 import com.uet.agent_simulation_worker.repositories.ExperimentResultImageRepository;
@@ -21,6 +22,7 @@ import com.uet.agent_simulation_worker.services.image.IImageService;
 import com.uet.agent_simulation_worker.services.node.INodeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.util.Pair;
@@ -47,6 +49,9 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
     private final IImageService imageService;
     private final ExperimentResultRepository experimentResultRepository;
     private final ExperimentResultImageRepository experimentResultImageRepository;
+
+    @Value("${gama.config.frame-rate}")
+    private int GAMA_FRAME_RATE;
 
     @Override
     public Pagination<List<ExperimentResultImage>> get(BigInteger experimentResultId, BigInteger experimentId,
@@ -349,57 +354,105 @@ public class ExperimentResultImageService implements IExperimentResultImageServi
     }
 
     @Override
-    public Flux<ExperimentResultImageListResponse> getMultiExperimentAnimatedImages(String experimentResultIds, Integer startStep,
-        Integer endStep, long duration) {
+    public Flux<ExperimentResultImageListResponse> getMultiExperimentAnimatedImages(
+            String experimentResultIds,
+            Integer startStep,
+            Integer endStep,
+            long duration,
+            String categoryIds
+    ) {
         final int CHUNK_SIZE = 10;
+        final var categoryIdList = categoryIds == null ? null : Arrays.stream(categoryIds.split(","))
+                .map(BigInteger::new)
+                .toList();
 
-        List<BigInteger> experimentResultIdList = Arrays.stream(experimentResultIds.split(","))
+        final List<BigInteger> experimentResultIdList = Arrays.stream(experimentResultIds.split(","))
                 .map(BigInteger::new)
                 .collect(Collectors.toList());
 
-        List<Pair<Integer, Integer>> chunks = new ArrayList<>();
-        for (int i = startStep; i <= endStep; i += CHUNK_SIZE) {
-            int chunkEnd = Math.min(i + CHUNK_SIZE - 1, endStep);
-            chunks.add(Pair.of(i, chunkEnd));
+        final List<Integer> steps = new ArrayList<>();
+        for (int step = startStep; step <= endStep; step += GAMA_FRAME_RATE) {
+            steps.add(step);
         }
+
+        final List<Pair<Integer, Integer>> chunks = new ArrayList<>();
+        for (int i = 0; i < steps.size(); i += CHUNK_SIZE) {
+            int endIndex = Math.min(i + CHUNK_SIZE - 1, steps.size() - 1);
+            chunks.add(Pair.of(steps.get(i), steps.get(endIndex)));
+        }
+
+        // Query all experiment results once at the beginning
+        final Map<BigInteger, ExperimentResult> experimentResultMap = experimentResultRepository
+                .findAllById(experimentResultIdList)
+                .stream()
+                .collect(Collectors.toMap(
+                        ExperimentResult::getId,
+                        experimentResult -> experimentResult
+                ));
+
+        final List<BigInteger> remoteExperimentIds = experimentResultMap.entrySet().stream()
+                .filter(entry -> !nodeService.getCurrentNodeId().equals(entry.getValue().getNodeId()))
+                .map(Map.Entry::getKey)
+                .toList();
+
+        final List<BigInteger> localExperimentIds = experimentResultMap.entrySet().stream()
+                .filter(entry -> nodeService.getCurrentNodeId().equals(entry.getValue().getNodeId()))
+                .map(Map.Entry::getKey)
+                .toList();
 
         return Flux.fromIterable(chunks)
             .concatMap(chunk ->
                 Flux.interval(Duration.ofNanos(duration))
-                    .take(chunk.getSecond() - chunk.getFirst() + 1)
+                    .take((chunk.getSecond() - chunk.getFirst()) / GAMA_FRAME_RATE + 1)
                     .flatMap(i -> {
-                        int step = i.intValue() + chunk.getFirst();
+                        final int step = chunk.getFirst() + i.intValue() * GAMA_FRAME_RATE;
 
-                        return Flux.fromIterable(experimentResultIdList)
+                        // Xử lý local experiments
+                        Flux<ExperimentResultImageListResponse> localImagesFlux = Flux.empty();
+                        if (!localExperimentIds.isEmpty()) {
+                            final List<ExperimentResultImage> allImages = experimentResultImageRepository
+                                    .findByRangeForMultipleExperiments(localExperimentIds, step, step, authService.getCurrentUserId(), categoryIdList);
+
+                            final Map<BigInteger, List<ExperimentResultImage>> imagesByExperiment = allImages.stream()
+                                    .collect(Collectors.groupingBy(ExperimentResultImage::getExperimentResultId));
+
+                            final List<ExperimentResultImageCategoryResponse> allCategories = new ArrayList<>();
+
+                            imagesByExperiment.forEach((experimentResultId, images) -> {
+                                images.forEach(image -> {
+                                    var base64EncodedImage = imageService.getImageDataEncoded(image.getLocation());
+                                    allCategories.add(new ExperimentResultImageCategoryResponse(
+                                            experimentResultId,
+                                            image.getExperimentResultCategoryId(),
+                                            base64EncodedImage
+                                    ));
+                                });
+                            });
+
+                            if (!allCategories.isEmpty()) {
+                                localImagesFlux = Flux.just(new ExperimentResultImageListResponse(
+                                        List.of(new ExperimentResultImageStepResponse(step, allCategories))
+                                ));
+                            }
+                        }
+
+                        // Xử lý remote experiments
+                        final Flux<ExperimentResultImageListResponse> remoteImagesFlux = Flux.fromIterable(remoteExperimentIds)
                             .flatMap(experimentResultId -> {
-                                final var experimentResult = experimentResultRepository.findById(experimentResultId)
-                                    .orElseThrow(() -> new ExperimentResultNotFoundException(ExperimentResultErrors.E_ER_0001.defaultMessage()));
+                                final ExperimentResult experimentResult = experimentResultMap.get(experimentResultId);
+                                return getMultiExperimentAnimatedImagesFromNode(
+                                    experimentResultId,
+                                    step,
+                                    step,
+                                    duration,
+                                    experimentResult.getNodeId()
+                                );
+                            });
 
-                                if (!nodeService.getCurrentNodeId().equals(experimentResult.getNodeId())) {
-                                    return getMultiExperimentAnimatedImagesFromNode(experimentResultId, step, step, duration, experimentResult.getNodeId());
-                                }
-
-                                final var images = experimentResultImageRepository.findByRange(experimentResultId, step, step,
-                                    authService.getCurrentUserId());
-
-                                if (images.isEmpty()) {
-                                    return Flux.empty();
-                                }
-
-                                final var categories = images.stream()
-                                    .map(image -> {
-                                        var base64EncodedImage = imageService.getImageDataEncoded(image.getLocation());
-                                        return new ExperimentResultImageCategoryResponse(experimentResultId,
-                                                image.getExperimentResultCategoryId(), base64EncodedImage);
-                                    })
-                                    .collect(Collectors.toList());
-
-                                return Flux.just(new ExperimentResultImageListResponse(
-                                    List.of(new ExperimentResultImageStepResponse(step, categories))));
-                            })
+                        // Merge kết quả và xử lý
+                        return Flux.concat(localImagesFlux, remoteImagesFlux)
                             .collectList()
                             .flatMapMany(responses -> {
-                                // Merge all categories from different experimentResults into one response
                                 List<ExperimentResultImageStepResponse> mergedStepResponses = new ArrayList<>();
                                 List<ExperimentResultImageCategoryResponse> allCategories = new ArrayList<>();
 

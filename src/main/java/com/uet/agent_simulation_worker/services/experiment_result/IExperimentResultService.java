@@ -18,4 +18,6 @@ public interface IExperimentResultService {
     DownloadExperimentResultResponse download(BigInteger id);
 
     void stop(BigInteger id);
+
+    void delete(BigInteger id);
 }

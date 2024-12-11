@@ -167,4 +167,16 @@ public class ExperimentResultService implements IExperimentResultService {
 
         threadUtil.killProcessById(experimentResult.get().getRunCommandPid());
     }
+
+    @Override
+    public void delete(BigInteger id) {
+        final var experimentResult = experimentResultRepository.findById(id);
+        if (experimentResult.isEmpty()) {
+            return;
+        }
+
+        fileUtil.delete(experimentResult.get().getLocation());
+        fileUtil.delete(experimentResult.get().getLocation() + ".zip");
+        experimentResultRepository.delete(experimentResult.get());
+    }
 }

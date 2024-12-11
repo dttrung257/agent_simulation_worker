@@ -22,5 +22,11 @@ public interface IExperimentResultImageService {
 
     Flux<ExperimentResultImageListResponse> getAnimatedImages(BigInteger experimentResultId, Integer startStep, Integer endStep, long duration);
 
-    Flux<ExperimentResultImageListResponse> getMultiExperimentAnimatedImages(String experimentResultIds, Integer startStep, Integer endStep, long duration);
+    Flux<ExperimentResultImageListResponse> getMultiExperimentAnimatedImages(
+        String experimentResultIds,
+        Integer startStep,
+        Integer endStep,
+        long duration,
+        String categoryIds
+    );
 }

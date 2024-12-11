@@ -50,19 +50,29 @@ public class SecurityConfig {
                                 .authenticationEntryPoint(appAuthenticationEntrypoint)
                 )
                 .authorizeHttpRequests((requests) -> requests
-                        // Auth endpoints - public
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
+                                // Because of frontend doesn't implement authentication feature, we need to permit all requests
+                                .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/**").permitAll()
+                                .requestMatchers(HttpMethod.PUT, "/api/**").permitAll()
+                                .requestMatchers(HttpMethod.DELETE, "/api/**").permitAll()
 
-                        // Health check
-                        .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/actuator/**").permitAll()
 
-                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_result_images/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_result_images/animation/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_results/**").permitAll()
-
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/experiment_results/{id}/stop").permitAll()
+//                         Auth endpoints - public
+//                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+//                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
+//                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
+//
+//                        // Health check
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+//
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_result_images/**").permitAll()
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_result_images/animation/**").permitAll()
+//                        .requestMatchers(HttpMethod.GET, "/api/v1/experiment_results/**").permitAll()
+//
+//                        .requestMatchers(HttpMethod.DELETE, "/api/v1/experiment_results/{id}/stop").permitAll()
+//
+//                        .requestMatchers(HttpMethod.GET, "/actuator/**").permitAll()
 
                         .anyRequest().authenticated()
                 )

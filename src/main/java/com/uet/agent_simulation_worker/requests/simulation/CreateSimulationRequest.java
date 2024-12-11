@@ -9,6 +9,7 @@ import lombok.Setter;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Create simulation request class.
@@ -27,6 +28,8 @@ public class CreateSimulationRequest {
     private Integer order;
 
     private Integer number;
+
+    private Map<String, String> gamaParams;
 
     @Valid
     @NotNull

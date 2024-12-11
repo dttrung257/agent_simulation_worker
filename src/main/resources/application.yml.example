@@ -2,14 +2,19 @@ spring:
   profiles:
     active: local
   application:
-    name: agent-simulation-api
+    name: ags-worker
   threads:
     virtual:
       enabled: true
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    metrics:
+      enabled: true
+
 app:
   timezone: UTC+7
-
-cluster:
-  node_id: 2
-  node_role: 2

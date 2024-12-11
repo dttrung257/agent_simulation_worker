@@ -1,15 +1,17 @@
+# DEV ENVIRONMENT
 services:
   api:
-    container_name: ags_local_worker
+    container_name: ags_dev_worker
+    restart: always
     build:
       context: .
-      dockerfile: ./docker/local/api/Dockerfile
+      dockerfile: ./docker/development/api/Dockerfile
     volumes:
       - ./:/app
       - ./projects:/app/projects
       - ./gama/gama-platform:/opt/gama-platform
     ports:
-      - "9998:9998"
+      - "8080:8080"
     networks:
       - ags_worker_network
 

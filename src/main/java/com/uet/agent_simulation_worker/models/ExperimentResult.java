@@ -46,11 +46,16 @@ public class ExperimentResult extends Auditable {
     @Column(columnDefinition = "BIGINT")
     private BigInteger number;
 
+    @Column(columnDefinition = "BIGINT", name = "simulation_run_id")
+    private BigInteger simulationRunId;
+
     @Column(name = "experiment_id", nullable = false, insertable = false, updatable = false, columnDefinition = "BIGINT")
     private BigInteger experimentId;
 
     @Column(name = "node_id", nullable = false, insertable = false, updatable = false)
     private Integer nodeId;
+
+    private Long runTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "experiment_id", referencedColumnName = "id")
