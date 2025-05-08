@@ -38,8 +38,23 @@ out/
 
 ## project files
 logs/*.log
-application.yml
-#application-*.yml
+#application.yml
+application-*.yml
 .workspace*/
-#docker-compose.yml
 cluster-config.yml
+
+# Project
+projects/*
+!projects/README.md
+
+# Storage
+storage/outputs/*
+!storage/outputs/README.md
+storage/xmls/*
+!storage/xmls/README.md
+
+# GAMA
+gama/*
+!gama/README.md
+
+.env

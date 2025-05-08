@@ -7,7 +7,9 @@ services:
       context: .
       dockerfile: ./docker/development/api/Dockerfile
     volumes:
-      - ./:/app
+      - ./src:/app/src
+      - ./storage:/app/storage
+      - .env:/app/.env
       - ./projects:/app/projects
       - ./gama/gama-platform:/opt/gama-platform
     ports:
