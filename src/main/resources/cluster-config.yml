@@ -1,0 +1,6 @@
+cluster:
+  node_id: 2
+  node_role: 2
+  host: 13.203.66.102
+  port: 8080
+  node_name: worker-1

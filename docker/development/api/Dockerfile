@@ -32,4 +32,6 @@ RUN chmod +x /docker-entrypoint.sh
 COPY /gama/gama-platform /opt/gama-platform
 RUN chmod -R 777 /opt/gama-platform
 
+RUN chmod +x /opt/gama-platform/headless/gama-headless.sh
+
 ENTRYPOINT ["/docker-entrypoint.sh"]

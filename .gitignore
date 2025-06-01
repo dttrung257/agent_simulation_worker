@@ -41,7 +41,7 @@ logs/*.log
 #application.yml
 application-*.yml
 .workspace*/
-cluster-config.yml
+# cluster-config.yml
 
 # Project
 projects/*
@@ -57,4 +57,4 @@ storage/xmls/*
 gama/*
 !gama/README.md
 
-.env
+# .env
